@@ -1,9 +1,9 @@
 # parameters
-ARG REPO_NAME="<REPO_NAME_HERE>"
-ARG DESCRIPTION="<DESCRIPTION_HERE>"
-ARG MAINTAINER="<YOUR_FULL_NAME> (<YOUR_EMAIL_ADDRESS>)"
+ARG REPO_NAME="dt-autolab-localization"
+ARG DESCRIPTION="Localization system for the Duckietown Autolab"
+ARG MAINTAINER="Andrea F. Daniele (afdaniele@ttic.edu)"
 # pick an icon from: https://fontawesome.com/v4.7.0/icons/
-ARG ICON="cube"
+ARG ICON="map-marker"
 
 # ==================================================>
 # ==> Do not change the code below this line
@@ -82,3 +82,5 @@ LABEL org.duckietown.label.module.type="${REPO_NAME}" \
     org.duckietown.label.maintainer="${MAINTAINER}"
 # <== Do not change the code above this line
 # <==================================================
+
+RUN apt update && apt install -y python3-tk
