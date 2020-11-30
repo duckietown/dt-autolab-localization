@@ -42,37 +42,39 @@ class DistributedTFNode(DTROS):
         self._map = dw.load_map(self.robot_hostname)
         # create communication group
         self._group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
+        # create TF between the /world frame and the origin of this map
+        self._world_to_map_origin_tf = AutolabTransform(
+            origin=AutolabReferenceFrame(
+                time=rospy.Time.now(),
+                type=AutolabReferenceFrame.ENTITY_TYPE_WORLD,
+                name="world",
+                robot="*"
+            ),
+            target=AutolabReferenceFrame(
+                time=rospy.Time.now(),
+                type=AutolabReferenceFrame.ENTITY_TYPE_MAP_ORIGIN,
+                name="map",
+                robot=self.robot_hostname
+            ),
+            is_fixed=True,
+            is_static=False,
+            transform=Transform(
+                translation=Vector3(x=0, y=0, z=0),
+                rotation=Quaternion(x=0, y=0, z=0, w=1)
+            )
+        )
         # create static tfs holder and access semaphore
         self._static_tfs = [
-            AutolabTransform(
-                origin=AutolabReferenceFrame(
-                    time=rospy.Time.now(),
-                    type=AutolabReferenceFrame.ENTITY_TYPE_WORLD,
-                    name="world",
-                    robot="*"
-                ),
-                target=AutolabReferenceFrame(
-                    time=rospy.Time.now(),
-                    type=AutolabReferenceFrame.ENTITY_TYPE_MAP_ORIGIN,
-                    name=self.robot_hostname,
-                    robot=self.robot_hostname
-                ),
-                is_fixed=True,
-                is_static=False,
-                transform=Transform(
-                    translation=Vector3(x=0, y=0, z=0),
-                    rotation=Quaternion(x=0, y=0, z=0, w=1)
-                )
-            )
+            self._world_to_map_origin_tf
         ]
-        # create publishers
+        # add TFs from ground tags
+        self._static_tfs.extend(self._get_tags_tfs())
+        # create publisher
         self._tf_pub = self._group.Publisher()
         self._pub_timer = rospy.Timer(
             rospy.Duration(self.PUBLISH_TF_STATIC_EVERY_SECS),
             self._publish_tfs
         )
-        # create publishers
-        self._tf_pub = self._group.Publisher()
 
     def on_shutdown(self):
         if hasattr(self, '_group') and self._group is not None:
@@ -105,7 +107,7 @@ class DistributedTFNode(DTROS):
                     origin=AutolabReferenceFrame(
                         time=rospy.Time.now(),
                         type=AutolabReferenceFrame.ENTITY_TYPE_MAP_ORIGIN,
-                        name=self.robot_hostname,
+                        name="map",
                         robot=self.robot_hostname
                     ),
                     target=AutolabReferenceFrame(
