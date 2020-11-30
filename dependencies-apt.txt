@@ -1,1 +1,4 @@
 # LIST YOUR APT PACKAGES HERE
+
+# this is a dependency of `duckietown-world-daffy` which takes forever to build from PyPi
+python3-freetype
