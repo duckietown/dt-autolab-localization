@@ -13,7 +13,7 @@ dt-launchfile-init
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 # launching app
-dt-exec roslaunch autolab-localization default.launch
+dt-exec rosrun cslam test_tf.py
 
 
 # ----------------------------------------------------------------------------

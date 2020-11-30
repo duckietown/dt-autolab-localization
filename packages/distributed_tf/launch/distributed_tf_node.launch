@@ -1,0 +1,28 @@
+<launch>
+    <!-- Mandatory args    -->
+	<arg name="veh" doc="The name of the robot (e.g., autobot01, watchtower02, ...)"/>
+	<arg name="map" doc="The name of the map the robot is performing on (e.g., largeloop, montreal, ...)"/>
+    <arg name="robot_type" doc="The type of the robot (e.g., duckiebot, watchtower, ...)"/>
+    <arg name="robot_tag_id" doc="The ID of the tag attached to the robot (e.g., 401, 402, ...)"/>
+    <!-- Optional args     -->
+    <arg name="pkg_name" value="distributed_tf"/>
+    <arg name="node_name" default="distributed_tf_node"/>
+    <arg name="param_file_name" default="default" doc="Specify a param filename. ex: montreal_loop"/>
+
+    <!-- Subscription -->
+    <!-- "~detections": duckietown_msgs/AprilTagDetectionArray. Input tag detections -->
+
+    <!-- Publication -->
+    <!--  None  -->
+
+    <group ns="$(arg veh)">
+        <remap from="distributed_tf_node/detections_in" to="apriltag_detector_node/detections" />
+        <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg robot_type)_$(arg node_name).py" output="screen">
+            <param name="veh" value="$(arg veh)" />
+            <param name="map" value="$(arg map)" />
+            <param name="tag_id" value="$(arg robot_tag_id)" />
+            <rosparam command="load"
+                file="$(find distributed_tf)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+        </node>
+    </group>
+</launch>
