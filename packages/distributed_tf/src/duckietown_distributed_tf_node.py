@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import rospy
 import geometry
 import numpy as np
@@ -32,10 +33,16 @@ class DistributedTFNode(DTROS):
         except KeyError:
             self.logerr('The parameter ~veh was not set, the node will abort.')
             exit(1)
+        # get static parameter - `~map`
+        try:
+            self.map_name = rospy.get_param('~map')
+        except KeyError:
+            self.logerr('The parameter ~map was not set, the node will abort.')
+            exit(2)
         # make sure the map exists
         maps = dw.list_maps()
         if self.robot_hostname not in maps:
-            self.logerr(f"Map `{self.robot_hostname}` not found in "
+            self.logerr(f"Map `{self.map_name}` not found in "
                         f"duckietown-world=={dw.__version__}. "
                         f"The node will abort.")
             exit(2)

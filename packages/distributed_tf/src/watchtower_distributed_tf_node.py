@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import os
+import re
+
 import yaml
 import rospy
 import rospkg
@@ -29,7 +31,7 @@ class DistributedTFNode(DTROS):
             exit(1)
         # get static parameter - `~map`
         try:
-            self.map_name = rospy.get_param('~map')
+            self.map_name = _sanitize_hostname(rospy.get_param('~map'))
         except KeyError:
             self.logerr('The parameter ~map was not set, the node will abort.')
             exit(2)
@@ -99,6 +101,10 @@ class DistributedTFNode(DTROS):
             for tag in db:
                 tags[tag["tag_id"]] = tag
         return tags
+
+
+def _sanitize_hostname(s: str):
+    return re.sub("[^0-9a-zA-Z]+", "", s)
 
 
 if __name__ == '__main__':
