@@ -78,7 +78,7 @@ class DistributedTFNode(DTROS):
                 target=AutolabReferenceFrame(
                     time=msg.header.stamp,
                     type=rf_type,
-                    name=msg.header.frame_id,
+                    name=f"tag/{detection.tag_id}",
                     robot=self.map_name
                 ),
                 is_fixed=False,
@@ -94,7 +94,7 @@ class DistributedTFNode(DTROS):
         #       we can't do that now because the atag-post-processor node is a mess
         rospack = rospkg.RosPack()
         distributed_tf_pkg_path = rospack.get_path('distributed_tf')
-        apriltags_db_filepath = os.path.join(distributed_tf_pkg_path, 'apriltagsDB.yaml')
+        apriltags_db_filepath = os.path.join(distributed_tf_pkg_path, '..', '..', 'assets', 'apriltagsDB.yaml')
         tags = {}
         with open(apriltags_db_filepath, 'r') as fin:
             db = yaml.safe_load(fin)
