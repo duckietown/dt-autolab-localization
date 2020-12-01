@@ -75,13 +75,13 @@ class DistributedTFNode(DTROS):
             tf = AutolabTransform(
                 origin=AutolabReferenceFrame(
                     time=transform.header.stamp,
-                    type=AutolabReferenceFrame.ENTITY_TYPE_DUCKIEBOT_TAG,
+                    type=AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG,
                     name=origin,
                     robot=self.robot_hostname
                 ),
                 target=AutolabReferenceFrame(
                     time=transform.header.stamp,
-                    type=AutolabReferenceFrame.ENTITY_TYPE_DUCKIEBOT_FOOTPRINT,
+                    type=AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
                     name=target,
                     robot=self.robot_hostname
                 ),

@@ -40,8 +40,8 @@ class DistributedTFNode(DTROS):
         #       we can't do that now because the atag-post-processor node is a mess
         self._tags = self._load_atag_db()
         self._tag_type_to_rf_type = {
-            'Localization': AutolabReferenceFrame.ENTITY_TYPE_GROUND_TAG,
-            'Vehicle': AutolabReferenceFrame.ENTITY_TYPE_DUCKIEBOT_TAG
+            'Localization': AutolabReferenceFrame.TYPE_GROUND_TAG,
+            'Vehicle': AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG
         }
         # create communication group
         self._group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
@@ -71,7 +71,7 @@ class DistributedTFNode(DTROS):
             tf = AutolabTransform(
                 origin=AutolabReferenceFrame(
                     time=msg.header.stamp,
-                    type=AutolabReferenceFrame.ENTITY_TYPE_WATCHTOWER_CAMERA,
+                    type=AutolabReferenceFrame.TYPE_WATCHTOWER_CAMERA,
                     name=msg.header.frame_id,
                     robot=self.robot_hostname
                 ),

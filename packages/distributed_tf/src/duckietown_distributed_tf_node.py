@@ -53,13 +53,13 @@ class DistributedTFNode(DTROS):
         self._world_to_map_origin_tf = AutolabTransform(
             origin=AutolabReferenceFrame(
                 time=rospy.Time.now(),
-                type=AutolabReferenceFrame.ENTITY_TYPE_WORLD,
+                type=AutolabReferenceFrame.TYPE_WORLD,
                 name="world",
                 robot="*"
             ),
             target=AutolabReferenceFrame(
                 time=rospy.Time.now(),
-                type=AutolabReferenceFrame.ENTITY_TYPE_MAP_ORIGIN,
+                type=AutolabReferenceFrame.TYPE_MAP_ORIGIN,
                 name="map",
                 robot=self.robot_hostname
             ),
@@ -113,13 +113,13 @@ class DistributedTFNode(DTROS):
                 tf = AutolabTransform(
                     origin=AutolabReferenceFrame(
                         time=rospy.Time.now(),
-                        type=AutolabReferenceFrame.ENTITY_TYPE_MAP_ORIGIN,
+                        type=AutolabReferenceFrame.TYPE_MAP_ORIGIN,
                         name="map",
                         robot=self.robot_hostname
                     ),
                     target=AutolabReferenceFrame(
                         time=rospy.Time.now(),
-                        type=AutolabReferenceFrame.ENTITY_TYPE_GROUND_TAG,
+                        type=AutolabReferenceFrame.TYPE_GROUND_TAG,
                         name=target,
                         robot=self.robot_hostname
                     ),
