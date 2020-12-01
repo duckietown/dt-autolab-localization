@@ -8,7 +8,7 @@
          doc="The configuration of the robot (e.g., DB19, DB20, WT18, ...)"/>
     <arg name="robot_tag_id" default="$(env ROBOT_TAG_ID)"
          doc="The ID of the tag attached to the robot (e.g., 401, 402, ...)"/>
-    <arg name="robot_map_name" default="$(env ROBOT_MAP_NAME)"
+    <arg name="robot_map_name" default="$(env MAP_NAME)"
          doc="The map the robot is associated to (e.g., largeloop, montreal, ...)"/>
     <!--      -->
     <arg name="param_file_name" default="default" doc="Specify a param file. ex: experiment_1."/>
