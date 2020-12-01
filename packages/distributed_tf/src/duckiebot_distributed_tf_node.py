@@ -51,6 +51,9 @@ class DistributedTFNode(DTROS):
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
         # create publishers
         self._tf_pub = self._group.Publisher()
+        # fetch/publish right away and then set timers
+        self._fetch_tfs()
+        self._publish_tfs()
         self._tf_static_timer = rospy.Timer(
             rospy.Duration(self.FETCH_TF_STATIC_EVERY_SECS),
             self._fetch_tfs
@@ -59,8 +62,6 @@ class DistributedTFNode(DTROS):
             rospy.Duration(self.PUBLISH_TF_STATIC_EVERY_SECS),
             self._publish_tfs
         )
-        # create publishers
-        self._tf_pub = self._group.Publisher()
 
     def on_shutdown(self):
         if hasattr(self, '_group') and self._group is not None:
@@ -85,7 +86,7 @@ class DistributedTFNode(DTROS):
                     name=target,
                     robot=self.robot_hostname
                 ),
-                is_fixed=False,
+                is_fixed=True,
                 is_static=False,
                 transform=transform.transform
             )

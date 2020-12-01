@@ -41,12 +41,12 @@ class DistributedTFNode(DTROS):
             exit(2)
         # make sure the map exists
         maps = dw.list_maps()
-        if self.robot_hostname not in maps:
+        if self.map_name not in maps:
             self.logerr(f"Map `{self.map_name}` not found in "
                         f"duckietown-world=={dw.__version__}. "
                         f"The node will abort.")
             exit(2)
-        self._map = dw.load_map(self.robot_hostname)
+        self._map = dw.load_map(self.map_name)
         # create communication group
         self._group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
         # create TF between the /world frame and the origin of this map
@@ -78,6 +78,8 @@ class DistributedTFNode(DTROS):
         self._static_tfs.extend(self._get_tags_tfs())
         # create publisher
         self._tf_pub = self._group.Publisher()
+        # publish right away and then set a timer
+        self._publish_tfs()
         self._pub_timer = rospy.Timer(
             rospy.Duration(self.PUBLISH_TF_STATIC_EVERY_SECS),
             self._publish_tfs
@@ -120,7 +122,7 @@ class DistributedTFNode(DTROS):
                     target=AutolabReferenceFrame(
                         time=rospy.Time.now(),
                         type=AutolabReferenceFrame.TYPE_GROUND_TAG,
-                        name=target,
+                        name=f"tag/{target[3:]}",
                         robot=self.robot_hostname
                     ),
                     is_fixed=True,
