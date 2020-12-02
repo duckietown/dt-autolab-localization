@@ -1,0 +1,20 @@
+<launch>
+    <arg name="veh" doc="Name of vehicle. ex: megaman"/>
+    <arg name="pkg_name" value="deadreckoning"/>
+    <arg name="node_name" default="deadreckoning_node"/>
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex: experiment_1."/>
+
+    <!-- Subscription -->
+    <!--    "/tf": tf2_msgs/TFMessage.         Dynamic transformations. -->
+    <!--    "/tf_static": tf2_msgs/TFMessage.  Static transformations.  -->
+
+    <!-- Publication -->
+    <!--    none.   -->
+
+    <group ns="$(arg veh)">
+        <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" required="true">
+            <rosparam command="load"
+                file="$(find deadreckoning)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+        </node>
+    </group>
+</launch>
