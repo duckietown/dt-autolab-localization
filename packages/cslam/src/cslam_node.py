@@ -1,105 +1,105 @@
 #!/usr/bin/env python3
 
+import tf
 import os
+import time
 from collections import defaultdict
-from threading import Semaphore
+import networkx as nx
 
 import matplotlib.image as pimage
 import matplotlib.pyplot as plt
-import networkx as nx
-import rosbag
-import tf
-from geometry_msgs.msg import TransformStamped, Transform, Vector3, Quaternion
-from std_msgs.msg import Header
-from tf2_msgs.msg import TFMessage
 
 from cslam import TFGraph
-from cslam.utils import TransformStamped_to_TF
-from cslam.utils import load_map, TF
+from cslam.utils import Transform_to_TF
 
-# TODO: this is temp stuff
-from cslam.__temporary import _is_wheel, _is_excluded, _is_duckiebot_tag
+from dt_class_utils import DTProcess
+from dt_communication_utils import DTCommunicationGroup
+from autolab_msgs.msg import \
+    AutolabTransform, \
+    AutolabReferenceFrame
+
+from geometry_msgs.msg import Transform, Quaternion
 
 # constants
 BAG_NAME = "2020-11-20-22-52-08"
 MAP_NAME = "TTIC_large_loop"
 PRECISION_MSECS = 500
-TILE_TEETH_SIZE = 0.02
+TRACKABLE_FRAME_TYPES = [
+    AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG,
+    AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
+]
+EXPERIMENT_DURATION = 12
+TILE_SIZE = 0.599
+MAP_WIDTH = TILE_SIZE * 4
+MAP_HEIGHT = TILE_SIZE * 5
+WORLD_RFRAME = Transform_to_TF(Transform(rotation=Quaternion(0, 0, 0, 1)))
 
 
-class PoseGraphOptimizerNode:
+class PoseGraphOptimizerNode(DTProcess):
 
     def __init__(self):
-        # super().__init__(
-        #     "cslam_node",
-        #     node_type=NodeType.LOCALIZATION
-        # )
+        super().__init__(name='PoseGraphOptimizerNode')
         # create graph
         self._graph = TFGraph()
-        # add world origin
-        self._graph.add_node("world", pose=TF(), fixed=True)
-        # create static TFs holder
-        self._static_tfs = {}
-        self._static_tfs_lock = Semaphore(1)
+        # create communication group
+        self._group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
         # create subscribers
-        # self._tf_sub = rospy.Subscriber("/tf", TFMessage, self.cb_tf)
-        # self._tf_static_sub = rospy.Subscriber("/tf_static", TFMessage, self.cb_tf_static)
+        self._tf_pub = None
 
-    def cb_tf(self, msg):
-        for transform in msg.transforms:
-            origin = transform.header.frame_id
-            target = transform.child_frame_id
+    def start(self):
+        self._tf_pub = self._group.Subscriber(self.cb_tf)
+
+    def stop(self):
+        pub = self._tf_pub
+        self._tf_pub = None
+        # ----
+        if pub is not None:
+            pub.shutdown()
+
+    def cb_tf(self, msg, _):
+        if self._tf_pub is None:
+            return
+
+        # measurement type 1: a fixed (solid, rigid, not-observed) TF
+        if msg.is_fixed and msg.origin.type == AutolabReferenceFrame.TYPE_MAP_ORIGIN:
             # add nodes
-            if not self._graph.has_node(origin):
-                self._graph.add_node(origin, fixed=False)
-            # if not self._graph.has_node(target):
-            #     self._graph.add_node(target)
+            self._graph.add_node(msg.origin.name, pose=WORLD_RFRAME, fixed=True, **self._node_attrs(msg.origin))
+            self._graph.add_node(msg.target.name, pose=Transform_to_TF(msg.transform), fixed=True, **self._node_attrs(msg.target))
 
-            tf = TransformStamped_to_TF(transform)
-
-            if _is_duckiebot_tag(msg):
-                target = f'{target}/{int(tf.time_ms // PRECISION_MSECS)}'
-
-            # add measurement
-            self._graph.add_measurement(origin, target, tf)
-
-            # self._graph.add_transform(transform)
-
-            # t, q = transform.transform.translation, transform.transform.rotation
-            # print(
-            #     f"registering dynamic TF:\n"
-            #     f"\t{transform.header.frame_id} -> {transform.child_frame_id}:\n"
-            #     f"\tposition: {[t.x, t.y, t.z]}\n"
-            #     f"\torientation: {tf.transformations.euler_from_quaternion([q.x, q.y, q.z, q.w])}\n"
-            # )
-
-    def cb_tf_static(self, msg):
-        for transform in msg.transforms:
-            origin = transform.header.frame_id
-            target = transform.child_frame_id
+        # measurement type 2: a static (solid, rigid, observed) TF
+        if msg.is_static:
             # add nodes
-            if not self._graph.has_node(origin):
-                self._graph.add_node(origin, fixed=True)
-            if not self._graph.has_node(target):
-                self._graph.add_node(target, pose=TransformStamped_to_TF(transform), fixed=True)
-            # add measurement
-            # TODO: this is wrong, ground tags should be `fixed`
-            # self._graph.add_measurement(origin, target, )
+            if not self._graph.has_node(msg.origin.name):
+                self._graph.add_node(msg.origin.name, **self._node_attrs(msg.origin))
+            if not self._graph.has_node(msg.target.name):
+                self._graph.add_node(msg.target.name, **self._node_attrs(msg.target))
+            # add observations
+            tf = Transform_to_TF(msg.transform)
+            self._graph.add_measurement(msg.origin.name, msg.target.name, tf)
 
-            key = (transform.header.frame_id, transform.child_frame_id)
+        # measurement type 3: a dynamic TF
+        if (not msg.is_static) and (not msg.is_fixed):
+            # handle origin
+            origin_node_name = msg.origin.name
+            if msg.origin.type in TRACKABLE_FRAME_TYPES:
+                origin_time_ms = int(msg.origin.time.to_sec() * 1000)
+                origin_node_name = f'{msg.origin.name}/{int(origin_time_ms // PRECISION_MSECS)}'
+            # handle target
+            target_node_name = msg.target.name
+            if msg.target.type in TRACKABLE_FRAME_TYPES:
+                target_time_ms = int(msg.target.time.to_sec() * 1000)
+                target_node_name = f'{msg.target.name}/{int(target_time_ms // PRECISION_MSECS)}'
+            # add nodes
+            if not self._graph.has_node(origin_node_name):
+                self._graph.add_node(origin_node_name, **self._node_attrs(msg.origin))
+            if not self._graph.has_node(target_node_name):
+                self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
+            # add observations
 
-            # if key not in self._static_tfs:
-            #     t, q = transform.transform.translation, transform.transform.rotation
-            #     print(
-            #         f"registering static TF:\n"
-            #         f"\t{key[0]} -> {key[1]}:\n"
-            #         f"\tposition: {[t.x, t.y, t.z]}\n"
-            #         f"\torientation: {tf.transformations.euler_from_quaternion([q.x, q.y, q.z, q.w])}\n"
-            #     )
+            print(origin_node_name, target_node_name)
 
-            # store TF
-            with self._static_tfs_lock:
-                self._static_tfs[key] = transform
+            tf = Transform_to_TF(msg.transform)
+            self._graph.add_measurement(origin_node_name, target_node_name, tf)
 
     def optimize(self):
         self._graph.optimize()
@@ -107,6 +107,13 @@ class PoseGraphOptimizerNode:
     def get_graph(self):
         return self._graph
 
+    @staticmethod
+    def _node_attrs(rframe: AutolabReferenceFrame) -> dict:
+        return {
+            "time": rframe.time.to_sec(),
+            "type": rframe.type,
+            "robot": rframe.robot
+        }
 
 def marker(frame_type: str) -> str:
     markers = {
@@ -136,91 +143,26 @@ def color(frame_type: str) -> str:
     return "green"
 
 
-# def nodesize(frame_type: str) -> Optional[int]:
-#     sizes = {
-#         "world": 50,
-#         "tag/4": 50,
-#         "tag/3": 50,
-#         "watchtower": 50,
-#         "autobot": 1
-#     }
-#     for prefix, size in sizes.items():
-#         if frame_type.startswith(prefix):
-#             return size
-#     return None
-
-
 def nodelist(G, prefix: str):
     return [n for n in G if n.startswith(prefix)]
 
 
 if __name__ == '__main__':
-    bag_filename = f"{BAG_NAME}.bag"
-    bag_filepath = os.path.join(os.environ.get("DT_REPO_PATH"), "assets", "logs", bag_filename)
     # create node
     node = PoseGraphOptimizerNode()
-    topic_to_cb = {
-        "/tf": node.cb_tf,
-        "/tf_static": node.cb_tf_static
-    }
-    # read map
-    map_filename = f"{MAP_NAME}.yaml"
-    map_filepath = os.path.join(os.environ.get("DT_REPO_PATH"), "assets", "maps", map_filename)
-    dtmap = load_map(map_filepath)
-    map_tags = dtmap.tags()
-    for tag in map_tags:
-        node.cb_tf_static(TFMessage(transforms=[
-            TransformStamped(
-                header=Header(frame_id=tag.origin),
-                child_frame_id=tag.target,
-                transform=Transform(
-                    translation=Vector3(
-                        x=tag.tf.t[0], y=tag.tf.t[1], z=tag.tf.t[2]
-                    ),
-                    rotation=Quaternion(
-                        x=tag.tf.q[0], y=tag.tf.q[1], z=tag.tf.q[2], w=tag.tf.q[3]
-                    )
-                )
-            )
-        ]))
-    # read from bag
-    last_t = 0
-    with rosbag.Bag(bag_filepath) as bag:
-        for topic, msg, msg_time in bag.read_messages(topics=list(topic_to_cb.keys())):
-            if _is_wheel(msg):
-                continue
-            if _is_excluded(msg):
-                continue
-            # if _is_duckiebot_tag(msg):
-            #     continue
-            # if _is_ground_tag(msg):
-            #     continue
-            # if not _is_of_interest(msg):
-            #     continue
-            # TODO: this is temporary, static TFs should be synced
-            if topic == "/tf_static":
-                continue
-            # TODO: this is temporary, should go when the devices are time-synced
-            for i in range(len(msg.transforms)):
-                msg.transforms[i].header.stamp = msg_time
-            # fake-publish message
-            topic_to_cb[topic](msg)
-
-            origin = msg.transforms[0].header.frame_id
-            target = msg.transforms[0].child_frame_id
-            t = msg.transforms[0].transform.translation
-            q = msg.transforms[0].transform.rotation
-            q = [q.x, q.y, q.z, q.w]
-
-            if origin.startswith('watchtower01') and '310' in target:
-                _t = [t.x, t.y, t.z]
-                _a = list(tf.transformations.euler_from_quaternion(q))
-                print(f'Observation[{origin} -> {target}]: \n\t xyz: {_t}\n\t rpw: {_a}\n')
-
-            # break
-
+    node.start()
+    node.logger.info(f'Waiting {EXPERIMENT_DURATION} seconds for observation to come in...')
+    # wait for enough observations to come in
+    time.sleep(EXPERIMENT_DURATION)
+    node.stop()
+    time.sleep(2)
+    node.logger.info(f'Node stopped. The graph has '
+                     f'{node.get_graph().number_of_nodes()} nodes and '
+                     f'{node.get_graph().number_of_edges()} edges.')
     # optimize
+    node.logger.info('Optimizing...')
     node.optimize()
+    node.logger.info('Done!')
     # show graph
     G = node.get_graph()
     print(f'Nodes: {G.number_of_nodes()}')
@@ -234,6 +176,8 @@ if __name__ == '__main__':
 
     # print poses
     for nname, ndata in G.nodes.data():
+        if ndata["type"] not in [AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG, AutolabReferenceFrame.TYPE_WATCHTOWER_CAMERA]:
+            continue
         a = list(tf.transformations.euler_from_quaternion(ndata["pose"].q))
         print(f'Node[{nname}]:\n\t xyz: {ndata["pose"].t}\n\t rpw: {a}\n')
 
@@ -263,7 +207,7 @@ if __name__ == '__main__':
     plt.imshow(
         map_png,
         origin='lower',
-        extent=[TILE_TEETH_SIZE, dtmap.width + TILE_TEETH_SIZE, 0, dtmap.height]
+        extent=[0, MAP_WIDTH, 0, MAP_HEIGHT]
     )
 
     for entity in ["world", "watchtower", "autobot", "tag/3", "tag/4"]:
@@ -281,8 +225,8 @@ if __name__ == '__main__':
         edges.add((edge[0], edge[1]))
     nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='ivory')
 
-    plt.xlim(0, dtmap.width)
-    plt.ylim(0, dtmap.height)
+    plt.xlim(0, MAP_WIDTH)
+    plt.ylim(0, MAP_HEIGHT)
     plt.subplots_adjust(left=0, bottom=0, right=0.99, top=0.99)
 
     plt.show()

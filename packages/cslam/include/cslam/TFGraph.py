@@ -27,6 +27,7 @@ class TFGraph(OrderedMultiDiGraph):
             attr["fixed"] = False
         # ---
         with self._lock:
+            print(f'Adding node "{name}" w/ {attr}')
             super(TFGraph, self).add_node(name, **attr)
 
     def add_measurement(self, origin: str, target: str, measurement: TF):
@@ -51,6 +52,13 @@ class TFGraph(OrderedMultiDiGraph):
         raise NotImplementedError("`add_weighted_edges_from` not supported on instance "
                                   "of type `TFGraph`.")
 
+    def is_fixed(self, name, default: bool = None) -> bool:
+        if name not in self:
+            if default is None:
+                raise KeyError(f"Node `{name}` not found.")
+            return default
+        return self[name].get('fixed', default)
+
     def optimize(self, max_iterations=20):
         optimizer = G2OPoseGraphOptimizer()
         id_to_name = {}
@@ -67,9 +75,6 @@ class TFGraph(OrderedMultiDiGraph):
                 pose = g2o.Isometry3d(g2o.Quaternion(ndata["pose"].q), ndata["pose"].t) \
                     if "pose" in ndata else None
                 fixed = ndata["fixed"] if "fixed" in ndata else False
-                print(nname)
-                print(pose)
-                print()
                 # add vertex
                 optimizer.add_vertex(node_id, pose=pose, fixed=fixed)
             # add edges
@@ -83,9 +88,6 @@ class TFGraph(OrderedMultiDiGraph):
                     translate=measurement.t,
                     angles=transformations.euler_from_quaternion(measurement.q)
                 )
-                print(u, v)
-                print(T)
-                print()
                 # add edge
                 optimizer.add_edge([iu, iv], g2o.Isometry3d(T))
         # optimize

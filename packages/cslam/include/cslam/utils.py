@@ -4,7 +4,7 @@ import dataclasses
 import numpy as np
 from typing import List
 
-from geometry_msgs.msg import TransformStamped
+from geometry_msgs.msg import Transform, TransformStamped
 
 
 @dataclasses.dataclass
@@ -91,12 +91,16 @@ def load_map(map_filepath: str) -> DuckietownMap:
         )
 
 
-def TransformStamped_to_TF(msg: TransformStamped, stamp: bool = True):
-    t = msg.transform.translation
-    q = msg.transform.rotation
-    time_ms = -1 if not stamp else int(msg.header.stamp.to_sec() * 1000)
+def Transform_to_TF(msg: Transform):
+    t = msg.translation
+    q = msg.rotation
     return TF(
         t=np.array([t.x, t.y, t.z]),
-        q=np.array([q.x, q.y, q.z, q.w]),
-        time_ms=time_ms
+        q=np.array([q.x, q.y, q.z, q.w])
     )
+
+
+def TransformStamped_to_TF(msg: TransformStamped, stamp: bool = True):
+    tf = Transform_to_TF(msg.transform)
+    tf.time_ms = -1 if not stamp else int(msg.header.stamp.to_sec() * 1000)
+    return tf
