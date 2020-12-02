@@ -43,6 +43,10 @@ class DistributedTFNode(DTROS):
             'Localization': AutolabReferenceFrame.TYPE_GROUND_TAG,
             'Vehicle': AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG
         }
+        self._tag_type_to_is_static = {
+            'Localization': True,
+            'Vehicle': False
+        }
         # create communication group
         self._group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
         # create publishers
@@ -67,6 +71,7 @@ class DistributedTFNode(DTROS):
             if tag_type not in self._tag_type_to_rf_type:
                 continue
             rf_type = self._tag_type_to_rf_type[tag_type]
+            is_static = self._tag_type_to_is_static[tag_type]
             # ---
             tf = AutolabTransform(
                 origin=AutolabReferenceFrame(
@@ -82,7 +87,7 @@ class DistributedTFNode(DTROS):
                     robot=self.map_name
                 ),
                 is_fixed=False,
-                is_static=True,
+                is_static=is_static,
                 transform=detection.transform
             )
             # publish

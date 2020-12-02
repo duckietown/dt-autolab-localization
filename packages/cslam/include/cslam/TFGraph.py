@@ -27,7 +27,7 @@ class TFGraph(OrderedMultiDiGraph):
             attr["fixed"] = False
         # ---
         with self._lock:
-            print(f'Adding node "{name}" w/ {attr}')
+            # print(f'Adding node "{name}" w/ {attr}')
             super(TFGraph, self).add_node(name, **attr)
 
     def add_measurement(self, origin: str, target: str, measurement: TF):
@@ -40,6 +40,7 @@ class TFGraph(OrderedMultiDiGraph):
             raise ValueError("Edge attribute `measurement` must be of type `TF`.")
         # ---
         with self._lock:
+            # print(f'Adding edge "({u}, {v})" w/ {attr}')
             super(TFGraph, self).add_edge(u, v, **attr)
 
     def add_nodes_from(self, nodes_for_adding, **attr):
