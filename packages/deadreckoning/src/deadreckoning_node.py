@@ -15,9 +15,6 @@ from geometry_msgs.msg import TransformStamped, Transform, Vector3, Quaternion, 
 from std_msgs.msg import Header
 from tf2_msgs.msg import TFMessage
 
-#from deadreckoning.utils import TransformStamped_to_TF
-#from deadreckoning.utils import TF
-
 # TODO: this is temp stuff
 from deadreckoning.__temporary import _is_wheel, _is_excluded, _is_duckiebot_tag
 
@@ -42,16 +39,17 @@ class DeadReckoningNode:
 
         # Keep a list of left and right wheel angles,
         # since they are not synchronized
-        self._left_wheel_angles = []
-        self._left_wheel_times = []
-        self._right_wheel_angles = []
-        self._right_wheel_times = []
+        self._left_wheel_orientations = []
+        self._left_wheel_timestamps = []
+        self._right_wheel_orientations = []
+        self._right_wheel_timestamps = []
 
-        self._left_wheel_angle_last = None
+        self._left_wheel_q_last = None
         self._left_wheel_time_last = None
-        self._right_wheel_angle_last = None
+        self._right_wheel_q_last = None
         self._right_wheel_time_last = None
 
+        # Current pose
         self.timestamp = None
         self.x = 0.0
         self.y = 0.0
@@ -65,6 +63,7 @@ class DeadReckoningNode:
         self.time = []
 
         self.total_dist = 0
+
 
     def publish_pose (self):
         pose = PoseStamped()
@@ -81,6 +80,47 @@ class DeadReckoningNode:
         #self.pub.publish(pose)
 
 
+    def compute_displacements (self, left_wheel_q, left_wheel_timestamp, right_wheel_q, right_wheel_timestamp):
+
+        # Compute the relative rotation of the left wheel
+        self._left_wheel_q_last[3] *= -1
+        qrel_left = tf.transformations.quaternion_multiply(self._left_wheel_q_last, left_wheel_q)
+        e_left =  tf.transformations.euler_from_quaternion(qrel_left)
+
+        # Distance associated with this relative rotation
+        distance_left = e_left[1] * WHEEL_RADIUS
+
+        # Compute the relative rotation of the right wheel
+        self._right_wheel_q_last[3] *= -1
+        qrel_right = tf.transformations.quaternion_multiply(self._right_wheel_q_last, right_wheel_q)
+        e_right = tf.transformations.euler_from_quaternion(qrel_right)
+
+        # Distance associated with this relative rotation
+        distance_right = e_right[1] * WHEEL_RADIUS
+
+        # Displacement in body-relative x-direction
+        distance = (distance_left + distance_right)/2
+
+        # Change in heading
+        yaw_angle = (distance_right - distance_left)/WHEELBASE
+
+        #print('distance left: ' + f'{distance_left}; distance_right: ' + f'{distance_right}')
+
+        # Associate with the average of the two timestamps
+        timestamp_avg = (left_wheel_timestamp + right_wheel_timestamp)/2
+
+        timestamp_avg_last = (self._left_wheel_time_last + self._right_wheel_time_last)/2
+
+        # Compute the forward velocity and angular rate
+        tv = distance/(timestamp_avg - timestamp_avg_last)
+        rv = yaw_angle/(timestamp_avg - timestamp_avg_last)
+
+        print('TV: ' + f'{tv} RV: ' + f'{rv};  DT: ' + f'{timestamp_avg - timestamp_avg_last}')
+
+        return tv, rv, timestamp_avg
+
+
+
     def cb_tf(self, msg):
         if not _is_wheel(msg):
             return
@@ -93,7 +133,6 @@ class DeadReckoningNode:
 
             q = msg.transforms[0].transform.rotation
             q = [q.x, q.y, q.z, q.w]
-            e = tf.transformations.euler_from_quaternion(q)
 
             timestamp_avg = None
             tv = None
@@ -103,122 +142,78 @@ class DeadReckoningNode:
             if target.endswith('left_wheel'):
 
                 left_wheel_q = q
+                left_wheel_timestamp = timestamp
 
-                if len(node._right_wheel_times):
-                    idx = min(range(len(node._right_wheel_times)), key=lambda i: abs(node._right_wheel_times[i]-timestamp))
+                # Find the right wheel message closest in time,
+                if len(node._right_wheel_timestamps):
+                    idx = min(range(len(node._right_wheel_timestamps)), key=lambda i: abs(node._right_wheel_timestamps[i]-timestamp))
 
-                    dt = abs(node._right_wheel_times[idx]-timestamp)
+                    # Only consider message if it is sufficiently close in time
+                    dt = abs(node._right_wheel_timestamps[idx]-timestamp)
                     if dt < ODOM_DT_MAX:
 
-                        right_wheel_q = node._right_wheel_angles[idx]
-                        left_wheel_timestamp = timestamp
-                        right_wheel_timestamp = node._right_wheel_times[idx]
+                        right_wheel_q = node._right_wheel_orientations[idx]
+                        right_wheel_timestamp = node._right_wheel_timestamps[idx]
 
 
-                        if node._left_wheel_angle_last and node._right_wheel_angle_last:
+                        if node._left_wheel_q_last and node._right_wheel_q_last:
 
-                            node._left_wheel_angle_last[3] *= -1
-                            qrel_left = tf.transformations.quaternion_multiply(node._left_wheel_angle_last, left_wheel_q)
-                            e_left =  tf.transformations.euler_from_quaternion(qrel_left)
+                            # Compute the linear and rotational velocities
+                            tv, rv, timestamp_avg = node.compute_displacements (left_wheel_q, left_wheel_timestamp, right_wheel_q, right_wheel_timestamp)
 
-                            distance_left = e_left[1] * WHEEL_RADIUS
-
-
-                            node._right_wheel_angle_last[3] *= -1
-                            qrel_right = tf.transformations.quaternion_multiply(node._right_wheel_angle_last, right_wheel_q)
-                            e_right = tf.transformations.euler_from_quaternion(qrel_right)
-
-                            distance_right = e_right[1] * WHEEL_RADIUS
-
-                            distance = (distance_left + distance_right)/2
-                            yaw_angle = (distance_right - distance_left)/WHEELBASE
-
-                            print('distance left: ' + f'{distance_left}; distance_right: ' + f'{distance_right}')
-
-                            timestamp_avg = (left_wheel_timestamp + right_wheel_timestamp)/2
-
-                            timestamp_avg_last = (node._left_wheel_time_last + node._right_wheel_time_last)/2
-
-                            tv = distance/(timestamp_avg - timestamp_avg_last)
-                            rv = yaw_angle/(timestamp_avg - timestamp_avg_last)
-
-                            print('TV: ' + f'{tv} RV: ' + f'{rv};  DT: ' + f'{timestamp_avg - timestamp_avg_last}')
 
                         node._left_wheel_time_last = left_wheel_timestamp
-                        node._left_wheel_angle_last = left_wheel_q
+                        node._left_wheel_q_last = left_wheel_q
 
                         node._right_wheel_time_last = right_wheel_timestamp
-                        node._right_wheel_angle_last = right_wheel_q
+                        node._right_wheel_q_last = right_wheel_q
 
-                        node._right_wheel_angles.pop(idx)
-                        node._right_wheel_times.pop(idx)
+                        # Remove the matching right wheel angle and time
+                        node._right_wheel_orientations.pop(idx)
+                        node._right_wheel_timestamps.pop(idx)
                     else:
-                        #print('Left: DT = ' + f'{dt}')
-                        node._left_wheel_times.append(timestamp)
-                        node._left_wheel_angles.append(left_wheel_q)
+                        node._left_wheel_timestamps.append(left_wheel_timestamp)
+                        node._left_wheel_orientations.append(left_wheel_q)
                 else:
-                    node._left_wheel_times.append(timestamp)
-                    node._left_wheel_angles.append(left_wheel_q)
+                    # Add to synchronization buffer if we haven't found a match
+                    node._left_wheel_timestamps.append(left_wheel_timestamp)
+                    node._left_wheel_orientations.append(left_wheel_q)
 
 
             elif target.endswith('right_wheel'):
 
                 right_wheel_q = q
+                right_wheel_timestamp = timestamp
 
-                if len(node._left_wheel_times):
-                    idx = min(range(len(node._left_wheel_times)), key=lambda i: abs(node._left_wheel_times[i]-timestamp))
+                if len(node._left_wheel_timestamps):
+                    idx = min(range(len(node._left_wheel_timestamps)), key=lambda i: abs(node._left_wheel_timestamps[i]-timestamp))
 
-
-                    dt = abs(node._left_wheel_times[idx]-timestamp)
+                    # Only consider message if it is sufficiently close in time
+                    dt = abs(node._left_wheel_timestamps[idx]-timestamp)
                     if dt < ODOM_DT_MAX:
 
-                        left_wheel_q = node._left_wheel_angles[idx]
-                        right_wheel_timestamp = timestamp
-                        left_wheel_timestamp = node._left_wheel_times[idx]
+                        left_wheel_q = node._left_wheel_orientations[idx]
+                        left_wheel_timestamp = node._left_wheel_timestamps[idx]
 
-                        if node._right_wheel_angle_last and node._left_wheel_angle_last:
+                        if node._right_wheel_q_last and node._left_wheel_q_last:
 
-                            node._right_wheel_angle_last[3] *= -1
-                            qrel_right = tf.transformations.quaternion_multiply(node._right_wheel_angle_last, right_wheel_q)
-                            e_right = tf.transformations.euler_from_quaternion(qrel_right)
-
-                            distance_right = e_right[1] * WHEEL_RADIUS
-
-
-                            node._left_wheel_angle_last[3] *= -1
-                            qrel_left = tf.transformations.quaternion_multiply(node._left_wheel_angle_last, left_wheel_q)
-                            e_left = tf.transformations.euler_from_quaternion(qrel_left)
-
-                            distance_left = e_left[1] * WHEEL_RADIUS
-
-                            distance = (distance_right + distance_left)/2
-                            yaw_angle = (distance_left - distance_right)/WHEELBASE
-
-                            print('distance right: ' + f'{distance_right}; distance_left: ' + f'{distance_left}')
-
-                            timestamp_avg = (right_wheel_timestamp + left_wheel_timestamp)/2
-
-                            timestamp_avg_last = (node._right_wheel_time_last + node._left_wheel_time_last)/2
-
-                            tv = distance/(timestamp_avg - timestamp_avg_last)
-                            rv = yaw_angle/(timestamp_avg - timestamp_avg_last)
-
-                            print('TV: ' + f'{tv} RV: ' + f'{rv};  DT: ' + f'{timestamp_avg - timestamp_avg_last}')
+                            # Compute the linear and rotational velocities
+                            tv, rv, timestamp_avg = node.compute_displacements (left_wheel_q, left_wheel_timestamp, right_wheel_q, right_wheel_timestamp)
 
                         node._right_wheel_time_last = right_wheel_timestamp
-                        node._right_wheel_angle_last = right_wheel_q
+                        node._right_wheel_q_last = right_wheel_q
 
                         node._left_wheel_time_last = left_wheel_timestamp
-                        node._left_wheel_angle_last = left_wheel_q
+                        node._left_wheel_q_last = left_wheel_q
 
-                        node._left_wheel_angles.pop(idx)
-                        node._left_wheel_times.pop(idx)
+                        node._left_wheel_orientations.pop(idx)
+                        node._left_wheel_timestamps.pop(idx)
                     else:
-                        node._right_wheel_times.append(timestamp)
-                        node._right_wheel_angles.append(right_wheel_q)
+                        node._right_wheel_timestamps.append(right_wheel_timestamp)
+                        node._right_wheel_orientations.append(right_wheel_q)
                 else:
-                    node._right_wheel_times.append(timestamp)
-                    node._right_wheel_angles.append(right_wheel_q)
+                    node._right_wheel_timestamps.append(right_wheel_timestamp)
+                    node._right_wheel_orientations.append(right_wheel_q)
 
             if node.timestamp and timestamp_avg:
                 timestamp_last = node.timestamp
