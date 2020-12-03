@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import re
 import rospy
-import geometry
 import numpy as np
 
 import duckietown_world as dw
@@ -16,6 +14,8 @@ from geometry_msgs.msg import \
     Transform, \
     Vector3, \
     Quaternion
+
+import tf.transformations as tr
 
 
 class DistributedTFNode(DTROS):
@@ -107,10 +107,10 @@ class DistributedTFNode(DTROS):
                 position = srel.transform.p
                 theta = srel.transform.theta
                 # get 3D rotation
-                Rz = geometry.rotation_from_axis_angle(np.array([0, 0, 1]), np.deg2rad(theta))
-                Rx = geometry.rotation_from_axis_angle(np.array([1, 0, 0]), np.deg2rad(180))
+                Rz = tr.rotation_matrix(theta, np.array([0, 0, 1]))
+                Rx = tr.rotation_matrix(np.deg2rad(180), np.array([1, 0, 0]))
                 R = np.matmul(Rz, Rx)
-                q = geometry.quaternion_from_rotation(R)
+                q = tr.quaternion_from_matrix(R)
                 # compile pose
                 tf = AutolabTransform(
                     origin=AutolabReferenceFrame(

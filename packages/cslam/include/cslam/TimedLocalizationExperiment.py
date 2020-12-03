@@ -14,6 +14,10 @@ TRACKABLE_FRAME_TYPES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG,
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
 ]
+FIXED_FRAMES = [
+    AutolabReferenceFrame.TYPE_MAP_ORIGIN,
+    AutolabReferenceFrame.TYPE_WORLD
+]
 
 
 class TimedLocalizationExperiment(ExperimentAbs):
@@ -35,7 +39,12 @@ class TimedLocalizationExperiment(ExperimentAbs):
 
     def __callback__(self, msg, _):
         # measurement type 1: a fixed (solid, rigid, not-observed) TF
-        if msg.is_fixed and msg.origin.type == AutolabReferenceFrame.TYPE_MAP_ORIGIN:
+        if msg.is_fixed and msg.origin.type in FIXED_FRAMES:
+            # TODO: nodes are are always added with absolute pose (i.e., wrt /world frame)
+            #       tags are normally defined wrt the /map_name frame, this will break when
+            #       a map is not aligned with /world. If we always run localization wrt the
+            #       map origin, this is not an issue, because /world would be a "local" world
+            #       to this map only.
             # add nodes
             self._graph.add_node(
                 msg.origin.name,
@@ -73,9 +82,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
             if msg.target.type in TRACKABLE_FRAME_TYPES:
                 target_time_ms = int(msg.target.time.to_sec() * 1000)
                 target_node_name = f'{msg.target.name}/{int(target_time_ms // self._precision_ms)}'
-
-            print(origin_node_name, target_node_name)
-
             # add nodes
             if not self._graph.has_node(origin_node_name):
                 self._graph.add_node(origin_node_name, **self._node_attrs(msg.origin))

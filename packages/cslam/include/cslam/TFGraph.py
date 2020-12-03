@@ -1,10 +1,9 @@
 import g2o
-import geometry
 from threading import Semaphore
 from networkx import OrderedMultiDiGraph
 from .G2OPoseGraphOptimizer import G2OPoseGraphOptimizer
 from .utils import TF
-from tf import transformations
+from tf import transformations as tr
 
 
 class TFGraph(OrderedMultiDiGraph):
@@ -73,7 +72,7 @@ class TFGraph(OrderedMultiDiGraph):
                 id_to_name[node_id] = nname
                 name_to_id[nname] = node_id
                 # get node pose and other attributes
-                pose = g2o.Isometry3d(g2o.Quaternion(ndata["pose"].q), ndata["pose"].t) \
+                pose = g2o.Isometry3d(g2o.Quaternion(ndata["pose"].Q('wxyz')), ndata["pose"].t) \
                     if "pose" in ndata else None
                 fixed = ndata["fixed"] if "fixed" in ndata else False
                 # add vertex
@@ -85,9 +84,9 @@ class TFGraph(OrderedMultiDiGraph):
                 iv = name_to_id[v]
                 # get edge measurement and other attributes
                 measurement = edata["measurement"]
-                T = transformations.compose_matrix(
+                T = tr.compose_matrix(
                     translate=measurement.t,
-                    angles=transformations.euler_from_quaternion(measurement.q)
+                    angles=tr.euler_from_quaternion(measurement.q)
                 )
                 # add edge
                 optimizer.add_edge([iu, iv], g2o.Isometry3d(T))
@@ -97,5 +96,9 @@ class TFGraph(OrderedMultiDiGraph):
         with self._lock:
             for nid, nname in id_to_name.items():
                 npose = optimizer.get_pose(nid)
-                q = geometry.quaternion_from_rotation(npose.R)
+                T = tr.compose_matrix(
+                    translate=npose.t,
+                    angles=tr.euler_from_matrix(npose.R)
+                )
+                q = tr.quaternion_from_matrix(T)
                 self.nodes[nname]["pose"] = TF(t=npose.t, q=q)

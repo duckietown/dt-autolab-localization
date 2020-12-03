@@ -1,5 +1,4 @@
 import yaml
-import geometry
 import dataclasses
 import numpy as np
 from typing import List

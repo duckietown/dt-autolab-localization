@@ -3,7 +3,6 @@ import os
 from collections import defaultdict
 
 import tf
-import numpy as np
 import networkx as nx
 import matplotlib.image as pimage
 import matplotlib.pyplot as plt
@@ -11,7 +10,7 @@ from autolab_msgs.msg import \
     AutolabReferenceFrame
 from autolab_msgs.msg import AutolabTransform
 
-from cslam import TimedLocalizationExperiment, TF
+from cslam import TimedLocalizationExperiment
 from cslam_app import manager, logger
 
 # constants

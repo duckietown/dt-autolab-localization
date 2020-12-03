@@ -10,6 +10,10 @@ class TF:
     q: np.ndarray = np.array([0, 0, 0, 1])
     time_ms: int = -1
 
+    def Q(self, order='xyzw'):
+        idx = ['xyzw'.index(a) for a in order]
+        return np.array([self.q[i] for i in idx])
+
 
 @dataclasses.dataclass
 class TFMeasurement:
