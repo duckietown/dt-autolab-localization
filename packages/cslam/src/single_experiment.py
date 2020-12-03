@@ -67,8 +67,6 @@ if __name__ == '__main__':
     logger.info(f'Waiting {EXPERIMENT_DURATION} seconds for observation to come in...')
     experiment.join()
 
-    experiment.graph.add_node('tag/343', fixed=True, pose=TF(t=np.array([1.236, 2.325, 0])), type=AutolabReferenceFrame.TYPE_GROUND_TAG)
-
     # stop the manager
     manager.stop()
 
