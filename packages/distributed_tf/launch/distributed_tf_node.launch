@@ -10,7 +10,8 @@
     <arg name="param_file_name" default="default" doc="Specify a param filename. ex: montreal_loop"/>
 
     <!-- Subscription -->
-    <!-- "~detections": duckietown_msgs/AprilTagDetectionArray. Input tag detections -->
+    <!-- "~detections_in": duckietown_msgs/AprilTagDetectionArray. Input tag detections -->
+    <!-- "~odometry_in": nav_msgs/Odometry. Robot's pose (wrt its wake-up position) estimated using wheel encoders -->
 
     <!-- Publication -->
     <!--  None  -->
