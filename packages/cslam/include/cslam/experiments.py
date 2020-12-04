@@ -89,7 +89,7 @@ class ExperimentAbs(abc.ABC):
         return self._manager
 
     @property
-    def status(self) -> int:
+    def status(self) -> ExperimentStatus:
         return self._status
 
     @property

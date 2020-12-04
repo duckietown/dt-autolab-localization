@@ -2,7 +2,7 @@
 
 import sys
 
-from cslam_app import manager, CSLAM_API
+from cslam_app import manager, CSLAMrestAPI
 from cslam_app.constants import CSLAM_API_PORT
 
 from dt_class_utils import DTProcess, AppStatus
@@ -14,7 +14,7 @@ class CSLAMApp(DTProcess):
     
     def __init__(self):
         super(CSLAMApp, self).__init__('CSLAM')
-        self._api = CSLAM_API(debug=self.is_debug)
+        self._api = CSLAMrestAPI(debug=self.is_debug)
         self.status = AppStatus.RUNNING
         # register shutdown callback
         self.register_shutdown_callback(_kill)

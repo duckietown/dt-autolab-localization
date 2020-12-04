@@ -1,4 +1,4 @@
-from .api import CSLAM_API
+from .api import CSLAMrestAPI
 from .manager import manager
 
 import os

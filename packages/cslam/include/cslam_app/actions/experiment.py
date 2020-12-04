@@ -1,5 +1,3 @@
-from threading import Thread
-
 from flask import request, Blueprint
 
 from cslam import TimedLocalizationExperiment, ExperimentStatus
@@ -31,53 +29,70 @@ def _experiment_create():
     # create experiment
     exp = TimedLocalizationExperiment(manager, duration, precision_ms)
     return response_ok({
-        'experiment_id': exp.id
+        'id': exp.id
     })
 
 
-@blueprint.route('/experiment/start/<str:exp_id>')
-def _experiment_start(exp_id: str):
+@blueprint.route('/experiment/start/<str:experiment_id>')
+def _experiment_start(experiment_id: str):
     """
     Starts an existing experiment.
     """
     # get experiment
-    if not manager.has(exp_id):
-        return response_error(f'Experiment with ID `{exp_id}` not found.')
+    if not manager.has(experiment_id):
+        return response_error(f'Experiment with ID `{experiment_id}` not found.')
     # start experiment
-    exp = manager.get(exp_id)
+    exp = manager.get(experiment_id)
     exp.start()
     return response_ok({
-        'experiment_id': exp.id
+        'id': exp.id
     })
 
 
-@blueprint.route('/experiment/stop/<str:exp_id>')
-def _experiment_stop(exp_id: str):
+@blueprint.route('/experiment/stop/<str:experiment_id>')
+def _experiment_stop(experiment_id: str):
     """
     Stops an existing experiment.
     """
     # get experiment
-    if not manager.has(exp_id):
-        return response_error(f'Experiment with ID `{exp_id}` not found.')
+    if not manager.has(experiment_id):
+        return response_error(f'Experiment with ID `{experiment_id}` not found.')
     # stop experiment
-    exp = manager.get(exp_id)
+    exp = manager.get(experiment_id)
     exp.stop(block=False)
     # ---
     return response_ok({
-        'experiment_id': exp.id
+        'id': exp.id
     })
 
 
-@blueprint.route('/experiment/results/<str:exp_id>')
-def _experiment_stop(exp_id: str):
+@blueprint.route('/experiment/status/<str:experiment_id>')
+def _experiment_status(experiment_id: str):
+    """
+    Returns the status of an existing experiment.
+    """
+    # get experiment
+    if not manager.has(experiment_id):
+        return response_error(f'Experiment with ID `{experiment_id}` not found.')
+    # get experiment
+    exp = manager.get(experiment_id)
+    # return experiments status
+    return response_ok({
+        'id': exp.id,
+        'status': exp.status.name
+    })
+
+
+@blueprint.route('/experiment/results/<str:experiment_id>')
+def _experiment_stop(experiment_id: str):
     """
     Stops an existing experiment.
     """
     # get experiment
-    if not manager.has(exp_id):
-        return response_error(f'Experiment with ID `{exp_id}` not found.')
+    if not manager.has(experiment_id):
+        return response_error(f'Experiment with ID `{experiment_id}` not found.')
     # get experiment
-    exp = manager.get(exp_id)
+    exp = manager.get(experiment_id)
     # check experiment status
     if exp.status != ExperimentStatus.FINISHED:
         return response_error(f'Experiment has not `FINISHED` yet. '
@@ -85,5 +100,6 @@ def _experiment_stop(exp_id: str):
     # get experiments results
     res = exp.results()
     return response_ok({
+        'id': exp.id,
         'results': res
     })
