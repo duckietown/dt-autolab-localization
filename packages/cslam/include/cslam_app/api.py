@@ -1,5 +1,4 @@
 import logging
-import os
 
 from flask import Flask
 from flask_cors import CORS
@@ -11,9 +10,6 @@ from .actions.experiment import blueprint as experiment_bp
 class CSLAMrestAPI(Flask):
 
     def __init__(self, debug=False):
-        # enable debug mode
-        if debug:
-            os.environ['FLASK_DEBUG'] = '1'
         # create Flask App
         super(CSLAMrestAPI, self).__init__(__name__)
         # register blueprints (/*)
