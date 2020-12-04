@@ -16,7 +16,8 @@
     <!--  None  -->
 
     <group ns="$(arg veh)">
-        <remap from="distributed_tf_node/detections_in" to="apriltag_detector_node/detections" />
+        <remap if="$(eval robot_type == 'watchtower')" from="distributed_tf_node/detections_in" to="apriltag_detector_node/detections" />
+        <remap if="$(eval robot_type == 'duckiebot')" from="distributed_tf_node/odometry_in" to="wheel_odometry_node/pose" />
         <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg robot_type)_$(arg node_name).py" output="screen">
             <param name="veh" value="$(arg veh)" />
             <param name="map" value="$(arg map)" />

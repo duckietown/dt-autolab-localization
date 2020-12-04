@@ -11,10 +11,12 @@ from autolab_msgs.msg import \
     AutolabTransform, \
     AutolabReferenceFrame
 
+from nav_msgs.msg import Odometry
+
 
 class DistributedTFNode(DTROS):
 
-    FETCH_TF_STATIC_EVERY_SECS = 10
+    FETCH_TF_STATIC_EVERY_SECS = 60
     PUBLISH_TF_STATIC_EVERY_SECS = 10
 
     def __init__(self):
@@ -40,6 +42,9 @@ class DistributedTFNode(DTROS):
         except KeyError:
             self.logerr('The parameter ~tag_id was not set, the node will abort.')
             exit(3)
+        # define local reference frames' names
+        self._tag_frame = f'tag/{self.tag_id}'
+        self._footprint_frame = f'{self.robot_hostname}/footprint'
         # create communication group
         self._group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
         # create static tfs holder and access semaphore
@@ -52,24 +57,32 @@ class DistributedTFNode(DTROS):
         # create publishers
         self._tf_pub = self._group.Publisher()
         # fetch/publish right away and then set timers
-        self._fetch_tfs()
-        self._publish_tfs()
+        self._fetch_static_tfs()
+        self._publish_static_tfs()
         self._tf_static_timer = rospy.Timer(
             rospy.Duration(self.FETCH_TF_STATIC_EVERY_SECS),
-            self._fetch_tfs
+            self._fetch_static_tfs
         )
         self._pub_timer = rospy.Timer(
             rospy.Duration(self.PUBLISH_TF_STATIC_EVERY_SECS),
-            self._publish_tfs
+            self._publish_static_tfs
         )
+        # setup subscribers for odometry
+        self._odo_sub = rospy.Subscriber(
+            "~/odometry_in",
+            Odometry,
+            self._cb_odometry,
+            queue_size=1
+        )
+        self._pose_last = None
 
     def on_shutdown(self):
         if hasattr(self, '_group') and self._group is not None:
             self._group.shutdown()
 
-    def _fetch_tfs(self, *_):
-        origin = f'tag/{self.tag_id}'
-        target = f'{self.robot_hostname}/footprint'
+    def _fetch_static_tfs(self, *_):
+        origin = self._tag_frame
+        target = self._footprint_frame
         # try to fetch the TF
         try:
             transform = self._tf_listener.lookupTransform(origin, target)
@@ -107,7 +120,7 @@ class DistributedTFNode(DTROS):
                 tf2_ros.ExtrapolationException):
             pass
 
-    def _publish_tfs(self, *_):
+    def _publish_static_tfs(self, *_):
         tfs = []
         self._static_tfs_sem.acquire()
         try:
@@ -118,6 +131,36 @@ class DistributedTFNode(DTROS):
         # publish
         for tf in tfs:
             self._tf_pub.publish(tf, destination=self.map_name)
+
+    def _cb_odometry(self, pose_now):
+        # TODO: @mwalter, this is where we take the Odometry message published by the deadreckoning
+        #       node and turn into relative TFs from pose_{t-1} to pose_{t}
+        if self._pose_last is None:
+            self._pose_last = pose_now
+            return
+        # compute TF between `pose_now` and `pose_last`
+        # TODO: to be completed
+        transform = None
+        # pack TF into an AutolabTransform message
+        tf = AutolabTransform(
+            origin=AutolabReferenceFrame(
+                time=self._pose_last.header.stamp,
+                type=AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
+                name=self._footprint_frame,
+                robot=self.robot_hostname
+            ),
+            target=AutolabReferenceFrame(
+                time=pose_now.header.stamp,
+                type=AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
+                name=self._footprint_frame,
+                robot=self.robot_hostname
+            ),
+            is_fixed=False,
+            is_static=False,
+            transform=transform
+        )
+        # publish
+        self._tf_pub.publish(tf, destination=self.map_name)
 
 
 def _sanitize_hostname(s: str):
