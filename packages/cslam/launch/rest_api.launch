@@ -1,7 +1,7 @@
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="pkg_name" value="cslam"/>
-    <arg name="node_name" default="single_experiment_node"/>
+    <arg name="node_name" default="rest_api_node"/>
 
     <!-- Subscription -->
     <!--    none.   -->

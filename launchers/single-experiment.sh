@@ -13,7 +13,8 @@ dt-launchfile-init
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 # launching app
-dt-exec rosrun cslam single_experiment.py
+dt-exec roslaunch cslam single_experiment.launch \
+    veh:="${VEHICLE_NAME}"
 
 
 # ----------------------------------------------------------------------------

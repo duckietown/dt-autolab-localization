@@ -13,7 +13,8 @@ dt-launchfile-init
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 # launching app
-dt-exec rosrun cslam REST_app.py
+dt-exec roslaunch cslam rest_api.launch \
+    veh:="${VEHICLE_NAME}"
 
 
 # ----------------------------------------------------------------------------

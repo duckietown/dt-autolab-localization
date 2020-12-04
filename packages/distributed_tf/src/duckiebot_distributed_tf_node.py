@@ -57,16 +57,17 @@ class DistributedTFNode(DTROS):
         # create publishers
         self._tf_pub = self._group.Publisher()
         # fetch/publish right away and then set timers
-        self._fetch_static_tfs()
-        self._publish_static_tfs()
-        self._tf_static_timer = rospy.Timer(
-            rospy.Duration(self.FETCH_TF_STATIC_EVERY_SECS),
-            self._fetch_static_tfs
-        )
-        self._pub_timer = rospy.Timer(
-            rospy.Duration(self.PUBLISH_TF_STATIC_EVERY_SECS),
-            self._publish_static_tfs
-        )
+        if self.tag_id != '__NOTSET__':
+            self._fetch_static_tfs()
+            self._publish_static_tfs()
+            self._tf_static_timer = rospy.Timer(
+                rospy.Duration(self.FETCH_TF_STATIC_EVERY_SECS),
+                self._fetch_static_tfs
+            )
+            self._pub_timer = rospy.Timer(
+                rospy.Duration(self.PUBLISH_TF_STATIC_EVERY_SECS),
+                self._publish_static_tfs
+            )
         # setup subscribers for odometry
         self._odo_sub = rospy.Subscriber(
             "~/odometry_in",
@@ -85,7 +86,7 @@ class DistributedTFNode(DTROS):
         target = self._footprint_frame
         # try to fetch the TF
         try:
-            transform = self._tf_listener.lookupTransform(origin, target)
+            transform = self._tf_buffer.lookup_transform(origin, target, rospy.Time())
             tf = AutolabTransform(
                 origin=AutolabReferenceFrame(
                     time=transform.header.stamp,
@@ -116,8 +117,9 @@ class DistributedTFNode(DTROS):
                 self._tf_static_timer.shutdown()
             except BaseException:
                 pass
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException,
-                tf2_ros.ExtrapolationException):
+        except (tf2_ros.LookupException, tf2_ros.ExtrapolationException):
+            self.logwarn(f"Could not find a static TF [{origin}] -> [{target}]")
+        except tf2_ros.ConnectivityException:
             pass
 
     def _publish_static_tfs(self, *_):
