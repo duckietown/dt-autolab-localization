@@ -20,6 +20,5 @@
         <arg name="map" value="$(arg robot_map_name)"/>
         <arg name="robot_type" value="$(arg robot_type)"/>
         <arg name="robot_tag_id" value="$(arg robot_tag_id)"/>
-        <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
 </launch>

@@ -1,0 +1,2 @@
+# parameters for distributed_tf_node
+min_distance_odom: 0.2

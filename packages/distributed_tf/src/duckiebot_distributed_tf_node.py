@@ -22,11 +22,7 @@ from geometry_msgs.msg import \
 import tf.transformations as tr
 
 
-MIN_DIST_ODOM = 0.2 # Minimum distance before adding odometry edges
-
-
 class DistributedTFNode(DTROS):
-
     FETCH_TF_STATIC_EVERY_SECS = 60
     PUBLISH_TF_STATIC_EVERY_SECS = 10
 
@@ -53,15 +49,12 @@ class DistributedTFNode(DTROS):
         except KeyError:
             self.logerr('The parameter ~tag_id was not set, the node will abort.')
             exit(3)
-
         # get static parameter - `~min_dist_odom`
-        # try:
-        #     self.min_dist_odom = rospy.get_param('~min_dist_odom')
-        # except KeyError:
-        #     self.logerr('The parameter ~min_dist_odom was not set, the node will abort.')
-        #     exit(3)
-
-        self.min_dist_odom = MIN_DIST_ODOM
+        try:
+            self.min_dist_odom = rospy.get_param('~min_distance_odom')
+        except KeyError:
+            self.logerr('The parameter ~min_dist_odom was not set, the node will abort.')
+            exit(4)
         # define local reference frames' names
         self._tag_frame = f'tag/{self.tag_id}'
         self._footprint_frame = f'{self.robot_hostname}/footprint'
@@ -90,8 +83,7 @@ class DistributedTFNode(DTROS):
             )
         # setup subscribers for odometry
         self._odo_sub = rospy.Subscriber(
-            #"~/odometry_in",
-            "/autobot01/deadreckoning_node/odom",
+            "~odometry_in",
             Odometry,
             self._cb_odometry,
             queue_size=1
@@ -155,19 +147,7 @@ class DistributedTFNode(DTROS):
         for tf in tfs:
             self._tf_pub.publish(tf, destination=self.map_name)
 
-    # rotate vector v1 by quaternion q1
-    def _qv_mult(self, q1, v1):
-        v1 = tr.unit_vector(v1)
-        q2 = list(v1)
-        q2.append(0.0)
-        return tr.quaternion_multiply(
-            tr.quaternion_multiply(q1, q2),
-            tr.quaternion_conjugate(q1)
-        )[:3]
-
     def _cb_odometry(self, pose_now):
-        # TODO: @mwalter, this is where we take the Odometry message published by the deadreckoning
-        #       node and turn into relative TFs from pose_{t-1} to pose_{t}
         if self._pose_last is None:
             self._pose_last = pose_now
             return
@@ -189,15 +169,15 @@ class DistributedTFNode(DTROS):
 
         q_world_to_last = q_last_to_world
         q_world_to_last[3] *= -1
-        q_now_to_last = tr.quaternion_multiply (q_world_to_last, q_now_to_world)
+        q_now_to_last = tr.quaternion_multiply(q_world_to_last, q_now_to_world)
 
         now_to_last = np.matrix(tr.quaternion_matrix(q_now_to_last))
-        #print(now_to_last)
-        now_to_last = now_to_last[0:3][:,0:3]
-        #print(now_to_last)
-        t_now_to_last = np.array(np.dot (now_to_last, t_now_to_world - t_last_to_world))
+        # print(now_to_last)
+        now_to_last = now_to_last[0:3][:, 0:3]
+        # print(now_to_last)
+        t_now_to_last = np.array(np.dot(now_to_last, t_now_to_world - t_last_to_world))
 
-        #print (t_now_to_last)
+        # print (t_now_to_last)
         t_now_to_last = t_now_to_last.flatten()
         dist = np.linalg.norm(t_now_to_last)
 
@@ -205,9 +185,7 @@ class DistributedTFNode(DTROS):
             return
 
         # compute TF between `pose_now` and `pose_last`
-        # TODO: to be completed
-        transform = None
-        transform=Transform(
+        transform = Transform(
             translation=Vector3(x=t_now_to_last[0],
                                 y=t_now_to_last[1],
                                 z=t_now_to_last[2]),
@@ -216,8 +194,6 @@ class DistributedTFNode(DTROS):
                                 z=q_now_to_last[2],
                                 w=q_now_to_last[3])
         )
-
-
 
         # pack TF into an AutolabTransform message
         tf = AutolabTransform(
