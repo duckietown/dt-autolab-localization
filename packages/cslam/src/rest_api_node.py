@@ -19,7 +19,7 @@ class CSLAMApp(DTProcess):
         # register shutdown callback
         self.register_shutdown_callback(_kill)
         # launch experiment manager
-        manager.launch("/autolab/tf", AutolabTransform)
+        manager.start("/autolab/tf", AutolabTransform)
         # serve HTTP requests over the REST API
         self._api.run(host='0.0.0.0', port=CSLAM_API_PORT)
 

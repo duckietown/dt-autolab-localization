@@ -3,7 +3,7 @@ import time
 import threading
 import uuid
 from enum import IntEnum
-from typing import Union
+from typing import Union, Dict
 
 MAX_EXPERIMENT_DURATION_SECS = 60
 
@@ -21,11 +21,12 @@ class ExperimentsManagerAbs(abc.ABC):
 
     def __init__(self):
         # create experiments holder
-        self._experiments = {}
+        self._experiments: Dict[str, ExperimentAbs] = {}
 
     def _cb(self, msg, header):
         for experiment in self._experiments.values():
-            experiment.step(msg, header)
+            if experiment.status == ExperimentStatus.RUNNING:
+                experiment.step(msg, header)
 
     def add(self, experiment: 'ExperimentAbs'):
         if not isinstance(experiment, ExperimentAbs):
@@ -75,6 +76,7 @@ class ExperimentAbs(abc.ABC):
         self._duration = duration
         self._heart = threading.Thread(target=self._heartbeat)
         self._stime = None
+        self._manager.add(self)
 
     @property
     def id(self) -> str:
@@ -106,7 +108,6 @@ class ExperimentAbs(abc.ABC):
     def start(self):
         self._stime = time.time()
         self._heart.start()
-        self._manager.add(self)
         self._status = ExperimentStatus.RUNNING
 
     def join(self, timeout: int = None):

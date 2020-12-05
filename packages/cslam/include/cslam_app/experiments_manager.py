@@ -4,7 +4,7 @@ from cslam.experiments import ExperimentsManagerAbs
 from dt_communication_utils import DTCommunicationGroup
 
 
-class _ExperimentsManager(ExperimentsManagerAbs):
+class ExperimentsManager(ExperimentsManagerAbs):
 
     def __init__(self):
         super().__init__()
@@ -25,7 +25,7 @@ class _ExperimentsManager(ExperimentsManagerAbs):
             self._group.shutdown()
 
 
-manager = _ExperimentsManager()
+manager = ExperimentsManager()
 
 __all__ = [
     'manager'

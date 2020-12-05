@@ -1,15 +1,17 @@
-from typing import List
+from typing import List, Dict
 
 from autolab_msgs.msg import AutolabReferenceFrame
 from geometry_msgs.msg import Transform, Quaternion
 
+from tf import transformations as tr
+
 from cslam import TFGraph
-from cslam.utils import Transform_to_TF, TF
+from cslam.utils import Transform_to_TF
 from .experiments import \
     ExperimentAbs, \
     ExperimentsManagerAbs
 
-WORLD_RFRAME = Transform_to_TF(Transform(rotation=Quaternion(0, 0, 0, 1)))
+WORLD_RFRAME = Transform_to_TF(Transform(rotation=Quaternion(x=0, y=0, z=0, w=1)))
 TRACKABLE_FRAME_TYPES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG,
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
@@ -95,22 +97,30 @@ class TimedLocalizationExperiment(ExperimentAbs):
         self.optimize()
 
     def __results__(self):
-        return {
-            self.trajectory(nname) for nname, ndata in self._graph.nodes(data=True)
+        trackable_frames = {
+            ndata["__name__"] for _, ndata in self._graph.nodes(data=True)
             if ndata["type"] in TRACKABLE_FRAME_TYPES
         }
+        return {nname: self.trajectory(nname) for nname in trackable_frames}
 
     def optimize(self):
         self._graph.optimize()
 
-    def trajectory(self, node: str) -> List[TF]:
+    def trajectory(self, node: str) -> List[Dict[str, List]]:
         # collect all timed nodes corresponding to the node to track
         traj = []
         for _, ndata in self._graph.nodes(data=True):
             if ndata['__name__'] == node:
-                traj.append(ndata["pose"])
+                T = tr.compose_matrix(
+                    translate=ndata["pose"].t,
+                    angles=tr.euler_from_quaternion(ndata["pose"].q)
+                )
+                traj.append({
+                    'timestamp': ndata["time"],
+                    'transform': T.tolist()
+                })
         # sort trajectory by time
-        strategy = lambda tf: tf if tf is None else tf.time_ms
+        strategy = lambda tf: tf['timestamp']
         traj = sorted(traj, key=strategy)
         # ---
         return traj

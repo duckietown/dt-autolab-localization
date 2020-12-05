@@ -33,7 +33,7 @@ def _experiment_create():
     })
 
 
-@blueprint.route('/experiment/start/<str:experiment_id>')
+@blueprint.route('/experiment/start/<string:experiment_id>')
 def _experiment_start(experiment_id: str):
     """
     Starts an existing experiment.
@@ -49,7 +49,7 @@ def _experiment_start(experiment_id: str):
     })
 
 
-@blueprint.route('/experiment/stop/<str:experiment_id>')
+@blueprint.route('/experiment/stop/<string:experiment_id>')
 def _experiment_stop(experiment_id: str):
     """
     Stops an existing experiment.
@@ -66,7 +66,7 @@ def _experiment_stop(experiment_id: str):
     })
 
 
-@blueprint.route('/experiment/status/<str:experiment_id>')
+@blueprint.route('/experiment/status/<string:experiment_id>')
 def _experiment_status(experiment_id: str):
     """
     Returns the status of an existing experiment.
@@ -83,8 +83,8 @@ def _experiment_status(experiment_id: str):
     })
 
 
-@blueprint.route('/experiment/results/<str:experiment_id>')
-def _experiment_stop(experiment_id: str):
+@blueprint.route('/experiment/results/<string:experiment_id>')
+def _experiment_results(experiment_id: str):
     """
     Stops an existing experiment.
     """

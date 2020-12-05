@@ -2,6 +2,10 @@
 import os
 from collections import defaultdict
 
+import rospy
+import tf2_ros
+from geometry_msgs.msg import TransformStamped, Transform, Quaternion, Vector3
+
 import tf
 import networkx as nx
 import matplotlib.image as pimage
@@ -20,6 +24,7 @@ PRECISION_MSECS = 500
 TILE_SIZE = 0.595
 MAP_WIDTH = TILE_SIZE * 4
 MAP_HEIGHT = TILE_SIZE * 5
+DEBUG = False
 
 
 def marker(frame_type: str) -> str:
@@ -55,6 +60,10 @@ def nodelist(g, prefix: str):
 
 
 if __name__ == '__main__':
+    if DEBUG:
+        rospy.init_node('cslam-single-experiment-debug')
+        br = tf2_ros.TransformBroadcaster()
+
     # launch experiment manager
     manager.start("/autolab/tf", AutolabTransform)
 
@@ -96,6 +105,18 @@ if __name__ == '__main__':
             continue
         a = list(tf.transformations.euler_from_quaternion(ndata["pose"].q))
         print(f'Node[{nname}]:\n\t xyz: {ndata["pose"].t}\n\t rpw: {a}\n')
+
+        if DEBUG:
+            t = TransformStamped()
+            t.header.stamp = rospy.Time.now()
+            t.header.frame_id = "world"
+            t.child_frame_id = nname
+            p, q = ndata["pose"].t, ndata["pose"].q
+            t.transform = Transform(
+                translation=Vector3(p[0], p[1], p[2]),
+                rotation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+            )
+            br.sendTransform(t)
 
     links = defaultdict(set)
     for u, v, _ in G.edges:
