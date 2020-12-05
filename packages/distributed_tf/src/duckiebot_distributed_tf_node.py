@@ -49,12 +49,17 @@ class DistributedTFNode(DTROS):
         except KeyError:
             self.logerr('The parameter ~tag_id was not set, the node will abort.')
             exit(3)
-        # get static parameter - `~min_dist_odom`
+        # get static parameter - `~min_distance_odom`
         try:
-            self.min_dist_odom = rospy.get_param('~min_distance_odom')
+            self.min_distance_odom = rospy.get_param('~min_distance_odom')
         except KeyError:
-            self.logerr('The parameter ~min_dist_odom was not set, the node will abort.')
+            self.logerr('The parameter ~min_distance_odom was not set, the node will abort.')
             exit(4)
+        # get static parameter - `~transforms`
+        self.transforms = rospy.get_param('~transforms', [])
+        for tf in self.transforms:
+            tf['origin'] = tf['origin'].format(veh=self.robot_hostname, tag_id=self.tag_id)
+            tf['target'] = tf['target'].format(veh=self.robot_hostname, tag_id=self.tag_id)
         # define local reference frames' names
         self._tag_frame = f'tag/{self.tag_id}'
         self._footprint_frame = f'{self.robot_hostname}/footprint'
@@ -62,7 +67,26 @@ class DistributedTFNode(DTROS):
         self._group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
         # create static tfs holder and access semaphore
         self._static_tfs = {
-            (f'{self.robot_hostname}/footprint', f'tag/{self.tag_id}'): None
+            (tf['origin'], tf['target']): AutolabTransform(
+                origin=AutolabReferenceFrame(
+                    time=rospy.Time(),
+                    type=AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
+                    name=tf['origin'],
+                    robot=self.robot_hostname
+                ),
+                target=AutolabReferenceFrame(
+                    time=rospy.Time(),
+                    type=AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG,
+                    name=tf['target'],
+                    robot=self.robot_hostname
+                ),
+                is_fixed=True,
+                is_static=False,
+                transform=Transform(
+                    translation=Vector3(*tf['translation']),
+                    rotation=Quaternion(*tr.quaternion_from_euler(*tf['rotation']))
+                )
+            ) for tf in self.transforms
         }
         self._static_tfs_sem = threading.Semaphore(1)
         self._tf_buffer = tf2_ros.Buffer()
@@ -73,10 +97,11 @@ class DistributedTFNode(DTROS):
         if self.tag_id != '__NOTSET__':
             self._fetch_static_tfs()
             self._publish_static_tfs()
-            self._tf_static_timer = rospy.Timer(
-                rospy.Duration(self.FETCH_TF_STATIC_EVERY_SECS),
-                self._fetch_static_tfs
-            )
+            # TODO: disabled because TFs were added to the YAML config file since ROS does not like multiple URDFs combination
+            # self._tf_static_timer = rospy.Timer(
+            #     rospy.Duration(self.FETCH_TF_STATIC_EVERY_SECS),
+            #     self._fetch_static_tfs
+            # )
             self._pub_timer = rospy.Timer(
                 rospy.Duration(self.PUBLISH_TF_STATIC_EVERY_SECS),
                 self._publish_static_tfs
@@ -181,7 +206,7 @@ class DistributedTFNode(DTROS):
         t_now_to_last = t_now_to_last.flatten()
         dist = np.linalg.norm(t_now_to_last)
 
-        if (dist < self.min_dist_odom):
+        if dist < self.min_distance_odom:
             return
 
         # compute TF between `pose_now` and `pose_last`
