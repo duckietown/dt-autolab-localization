@@ -21,6 +21,9 @@ from cslam_app import manager, logger
 MAP_NAME = "TTIC_large_loop"
 EXPERIMENT_DURATION = 12
 PRECISION_MSECS = 500
+TRACKABLES = [
+    AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
+]
 TILE_SIZE = 0.595
 MAP_WIDTH = TILE_SIZE * 4
 MAP_HEIGHT = TILE_SIZE * 5
@@ -30,10 +33,10 @@ DEBUG = False
 def marker(frame_type: str) -> str:
     markers = {
         "world": "P",
-        "tag/4": "o",
+        "autobot": "o",
+        "tag/4": ".",
         "tag/3": "s",
         "watchtower": "h",
-        "autobot": "."
     }
     for prefix, mark in markers.items():
         if frame_type.startswith(prefix):
@@ -44,10 +47,10 @@ def marker(frame_type: str) -> str:
 def color(frame_type: str) -> str:
     colors = {
         "world": "black",
-        "tag/4": "cornflowerblue",
+        "autobot": "cornflowerblue",
+        "tag/4": "slategrey",
         "tag/3": "red",
         "watchtower": "orange",
-        "autobot": "slategrey"
     }
     for prefix, mark in colors.items():
         if frame_type.startswith(prefix):
@@ -68,7 +71,8 @@ if __name__ == '__main__':
     manager.start("/autolab/tf", AutolabTransform)
 
     # create experiment
-    experiment = TimedLocalizationExperiment(manager, EXPERIMENT_DURATION, PRECISION_MSECS)
+    experiment = TimedLocalizationExperiment(
+        manager, EXPERIMENT_DURATION, PRECISION_MSECS, TRACKABLES)
     experiment.start()
 
     # join experiment
@@ -100,11 +104,10 @@ if __name__ == '__main__':
 
     # print poses
     for nname, ndata in G.nodes.data():
-        if ndata["type"] not in [AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG,
-                                 AutolabReferenceFrame.TYPE_WATCHTOWER_CAMERA]:
+        if ndata["type"] not in [AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT, AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG]:
             continue
         a = list(tf.transformations.euler_from_quaternion(ndata["pose"].q))
-        print(f'Node[{nname}]:\n\t xyz: {ndata["pose"].t}\n\t rpw: {a}\n')
+        print(f'Node[{nname}][{ndata["type"]}]:\n\t xyz: {ndata["pose"].t}\n\t rpw: {a}\n')
 
         if DEBUG:
             t = TransformStamped()
@@ -147,7 +150,7 @@ if __name__ == '__main__':
         extent=[0, MAP_WIDTH, 0, MAP_HEIGHT]
     )
 
-    for entity in ["world", "watchtower", "autobot", "tag/3", "tag/4"]:
+    for entity in ["world", "watchtower", "autobot", "tag/3"]:
         nx.draw_networkx_nodes(
             G,
             pos,

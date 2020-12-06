@@ -12,7 +12,7 @@ from .experiments import \
     ExperimentsManagerAbs
 
 WORLD_RFRAME = Transform_to_TF(Transform(rotation=Quaternion(x=0, y=0, z=0, w=1)))
-TRACKABLE_FRAME_TYPES = [
+MOVABLE_FRAMES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG,
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
 ]
@@ -24,10 +24,14 @@ FIXED_FRAMES = [
 
 class TimedLocalizationExperiment(ExperimentAbs):
 
-    def __init__(self, manager: ExperimentsManagerAbs, duration: int, precision_ms: int):
+    def __init__(self, manager: ExperimentsManagerAbs, duration: int, precision_ms: int,
+                 trackables: List[int]):
         super().__init__(manager, duration)
         # store properties
         self._precision_ms = precision_ms
+        self._trackables = trackables
+        # store fixed TFs
+        self._fixed_tfs = {}
         # create graph
         self._graph = TFGraph()
 
@@ -76,12 +80,12 @@ class TimedLocalizationExperiment(ExperimentAbs):
         if (not msg.is_static) and (not msg.is_fixed):
             # handle origin
             origin_node_name = msg.origin.name
-            if msg.origin.type in TRACKABLE_FRAME_TYPES:
+            if msg.origin.type in MOVABLE_FRAMES:
                 origin_time_ms = int(msg.origin.time.to_sec() * 1000)
                 origin_node_name = f'{msg.origin.name}/{int(origin_time_ms // self._precision_ms)}'
             # handle target
             target_node_name = msg.target.name
-            if msg.target.type in TRACKABLE_FRAME_TYPES:
+            if msg.target.type in MOVABLE_FRAMES:
                 target_time_ms = int(msg.target.time.to_sec() * 1000)
                 target_node_name = f'{msg.target.name}/{int(target_time_ms // self._precision_ms)}'
             # add nodes
@@ -93,17 +97,23 @@ class TimedLocalizationExperiment(ExperimentAbs):
             tf = Transform_to_TF(msg.transform)
             self._graph.add_measurement(origin_node_name, target_node_name, tf)
 
+        # store ALL fixed TFs
+        if msg.is_fixed:
+            tf_key = (msg.origin.name, msg.target.name)
+            self._fixed_tfs[tf_key] = msg
+
     def __postprocess__(self):
         self.optimize()
 
     def __results__(self):
         trackable_frames = {
             ndata["__name__"] for _, ndata in self._graph.nodes(data=True)
-            if ndata["type"] in TRACKABLE_FRAME_TYPES
+            if ndata["type"] in self._trackables
         }
         return {nname: self.trajectory(nname) for nname in trackable_frames}
 
     def optimize(self):
+        self._extend_graph()
         self._graph.optimize()
 
     def trajectory(self, node: str) -> List[Dict[str, List]]:
@@ -124,6 +134,56 @@ class TimedLocalizationExperiment(ExperimentAbs):
         traj = sorted(traj, key=strategy)
         # ---
         return traj
+
+    def _extend_graph(self):
+        # append fixed TFs to non-trackable leaf nodes
+        untrackable_leaf_nodes = [
+            (nname, ndata) for nname, ndata in self.graph.nodes(data=True)
+            if self.graph.out_degree(nname) == 0 and ndata['type'] not in self._trackables
+        ]
+        # store new nodes/edges
+        new_nodes = {}
+        new_edges = {}
+        # iterate over the leaf nodes and append fixed TFs
+        for leaf_timed_name, leaf in untrackable_leaf_nodes:
+            leaf_frame_name = leaf['__name__']
+            # search for edges (leaf, X), or (X, leaf)
+            for (origin, target), msg in self._fixed_tfs.items():
+                if origin == leaf_frame_name:
+                    # found an edge of type (leaf, X)
+                    if msg.target.type not in self._trackables:
+                        continue
+                    # ---
+                    new_node = f"{target}/{int((leaf['time'] * 1000) // self._precision_ms)}"
+                    # print(f'Adding node `{new_node}` and edge `{leaf_timed_name}` -> `{new_node}`')
+                    # create new node
+                    new_node_attrs = self._node_attrs(msg.target)
+                    new_node_attrs['time'] = leaf['time']
+                    new_nodes[new_node] = new_node_attrs
+                    # create new edge
+                    tf = Transform_to_TF(msg.transform)
+                    new_edges[(leaf_timed_name, new_node)] = tf
+                if target == leaf_frame_name:
+                    # found an edge of type (X, leaf)
+                    if msg.origin.type not in self._trackables:
+                        continue
+                    # ---
+                    new_node = f"{origin}/{int((leaf['time'] * 1000) // self._precision_ms)}"
+                    # print(f'Adding node `{new_node}` and edge `{new_node}` -> `{leaf_timed_name}`')
+                    new_node_attrs = self._node_attrs(msg.origin)
+                    new_node_attrs['time'] = leaf['time']
+                    new_nodes[new_node] = new_node_attrs
+                    # create new edge
+                    tf = Transform_to_TF(msg.transform)
+                    new_edges[(new_node, leaf_timed_name)] = tf
+        # add new nodes
+        for nname, ndata in new_nodes.items():
+            if not self._graph.has_node(nname):
+                self._graph.add_node(nname, **ndata)
+        # add new edges
+        for (origin, target), tf in new_edges.items():
+            if not self._graph.has_edge(origin, target):
+                self._graph.add_measurement(origin, target, tf)
 
     @staticmethod
     def _node_attrs(rframe: AutolabReferenceFrame) -> dict:

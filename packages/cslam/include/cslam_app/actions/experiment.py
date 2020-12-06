@@ -1,10 +1,16 @@
 from flask import request, Blueprint
 
+from autolab_msgs.msg import AutolabReferenceFrame
+
 from cslam import TimedLocalizationExperiment, ExperimentStatus
 from cslam_app import manager
 from cslam_app.utils import response_ok, response_error
 
 blueprint = Blueprint('experiment', __name__)
+
+TRACKABLES = [
+    AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
+]
 
 
 @blueprint.route('/experiment/create')
@@ -27,7 +33,7 @@ def _experiment_create():
     except ValueError as e:
         return response_error(str(e))
     # create experiment
-    exp = TimedLocalizationExperiment(manager, duration, precision_ms)
+    exp = TimedLocalizationExperiment(manager, duration, precision_ms, TRACKABLES)
     return response_ok({
         'id': exp.id
     })
