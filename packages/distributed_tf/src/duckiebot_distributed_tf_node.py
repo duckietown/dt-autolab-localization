@@ -17,7 +17,8 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import \
     Transform, \
     Vector3, \
-    Quaternion
+    Quaternion, \
+    TransformStamped
 
 import tf.transformations as tr
 
@@ -73,6 +74,8 @@ class DistributedTFNode(DTROS):
         self._static_tfs_sem = threading.Semaphore(1)
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(self._tf_buffer)
+        self._tf_broadcaster = tf2_ros.TransformBroadcaster()
+        self._tf_counter = 0
         # create publishers
         self._tf_pub = self._group.Publisher()
         # fetch/publish right away and then set timers
@@ -158,6 +161,7 @@ class DistributedTFNode(DTROS):
         if self._pose_last is None:
             self._pose_last = pose_now
             return
+
         # Only add the transform if the new pose is sufficiently different
         t_now_to_world = np.array([pose_now.pose.pose.position.x,
                                    pose_now.pose.pose.position.y,
@@ -173,27 +177,33 @@ class DistributedTFNode(DTROS):
         o = self._pose_last.pose.pose.orientation
         q_last_to_world = np.array([o.x, o.y, o.z, o.w])
 
+
         q_world_to_last = q_last_to_world
         q_world_to_last[3] *= -1
         q_now_to_last = tr.quaternion_multiply(q_world_to_last, q_now_to_world)
+        world_to_last = np.matrix(tr.quaternion_matrix(q_world_to_last))
 
-        now_to_last = np.matrix(tr.quaternion_matrix(q_now_to_last))
+        #now_to_last = np.matrix(tr.quaternion_matrix(q_now_to_last))
         # print(now_to_last)
-        now_to_last = now_to_last[0:3][:, 0:3]
+        #now_to_last = now_to_last[0:3][:, 0:3]
+        R_world_to_last = world_to_last[0:3][:, 0:3]
         # print(now_to_last)
-        t_now_to_last = np.array(np.dot(now_to_last, t_now_to_world - t_last_to_world))
+        #t_now_to_last = np.array(np.dot(now_to_last, t_now_to_world - t_last_to_world))
+        t_now_to_last = np.array(np.dot(R_world_to_last, t_now_to_world - t_last_to_world))
 
-        # print (t_now_to_last)
         t_now_to_last = t_now_to_last.flatten()
         dist = np.linalg.norm(t_now_to_last)
 
         if dist < self.min_distance_odom:
             return
 
-        elapsed_time = pose_now.header.stamp.to_sec() - self._pose_last.header.stamp.to_sec()
-        if elapsed_time > self.max_time_between_poses:
-            self._pose_last = pose_now
-            return
+        # print(t_now_to_last)
+        # print(q_now_to_last)
+
+        # elapsed_time = pose_now.header.stamp.to_sec() - self._pose_last.header.stamp.to_sec()
+        # if elapsed_time > self.max_time_between_poses:
+        #     self._pose_last = pose_now
+        #     return
 
         # compute TF between `pose_now` and `pose_last`
         transform = Transform(
@@ -205,6 +215,12 @@ class DistributedTFNode(DTROS):
                                 z=q_now_to_last[2],
                                 w=q_now_to_last[3])
         )
+
+
+        # print(q_last_to_world)
+        # print(q_now_to_world)
+        # print(q_now_to_last)
+        # print()
 
         # pack TF into an AutolabTransform message
         tf = AutolabTransform(
@@ -226,8 +242,16 @@ class DistributedTFNode(DTROS):
         )
         # publish
         self._tf_pub.publish(tf, destination=self.map_name)
+
+        t = TransformStamped()
+        t.header.stamp = pose_now.header.stamp
+        t.header.frame_id = f"{self.robot_hostname}/odometry/last"
+        t.child_frame_id = f"{self.robot_hostname}/odometry/now"
+        t.transform = transform
+        self._tf_broadcaster.sendTransform(t)
         # update last pose
         self._pose_last = pose_now
+        self._tf_counter += 1
 
 
 def _sanitize_hostname(s: str):

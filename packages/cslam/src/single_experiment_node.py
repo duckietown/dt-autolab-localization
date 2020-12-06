@@ -19,7 +19,7 @@ from cslam_app import manager, logger
 
 # constants
 MAP_NAME = "TTIC_large_loop"
-EXPERIMENT_DURATION = 12
+EXPERIMENT_DURATION = 45
 PRECISION_MSECS = 500
 TRACKABLES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
@@ -86,21 +86,43 @@ if __name__ == '__main__':
     logger.info(f'Experiment terminated. The graph has '
                 f'{experiment.graph.number_of_nodes()} nodes and '
                 f'{experiment.graph.number_of_edges()} edges.')
-    # optimize
-    logger.info('Optimizing...')
-    experiment.optimize()
-    logger.info('Done!')
 
     # show graph
     G = experiment.graph
     print(f'Nodes: {G.number_of_nodes()}')
     print(f'Edges: {G.number_of_edges()}')
 
-    # pos = nx.spring_layout(G)
-    pos = {}
 
+
+    pos = {}
     for nname, ndata in G.nodes.data():
         pos[nname] = ndata["pose"].t[:2]
+    for entity in ["world", "watchtower", "autobot", "tag/3"]:
+        nx.draw_networkx_nodes(
+            G,
+            pos,
+            nodelist=nodelist(G, entity),
+            node_shape=marker(entity),
+            node_color=color(entity),
+            node_size=300
+        )
+
+    edges = set()
+    for edge in G.edges:
+        edges.add((edge[0], edge[1]))
+    nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='blue')
+
+
+
+
+    # optimize
+    logger.info('Optimizing...')
+    experiment.optimize()
+    logger.info('Done!')
+
+    pos = {}
+    for nname, ndata in G.nodes.data():
+        pos[nname] = ndata["pose"].t[:2] + [0, 1]
 
     # print poses
     for nname, ndata in G.nodes.data():
@@ -144,11 +166,16 @@ if __name__ == '__main__':
     png_filename = f"{MAP_NAME}.png"
     png_filepath = os.path.join(os.environ.get("DT_REPO_PATH"), "assets", "maps", png_filename)
     map_png = pimage.imread(png_filepath)
-    plt.imshow(
-        map_png,
-        origin='lower',
-        extent=[0, MAP_WIDTH, 0, MAP_HEIGHT]
-    )
+    # plt.imshow(
+    #     map_png,
+    #     origin='lower',
+    #     extent=[0, MAP_WIDTH, 0, MAP_HEIGHT]
+    # )
+
+
+
+
+
 
     for entity in ["world", "watchtower", "autobot", "tag/3"]:
         nx.draw_networkx_nodes(
@@ -157,16 +184,16 @@ if __name__ == '__main__':
             nodelist=nodelist(G, entity),
             node_shape=marker(entity),
             node_color=color(entity),
-            node_size=300
+            node_size=150
         )
 
     edges = set()
     for edge in G.edges:
         edges.add((edge[0], edge[1]))
-    nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='ivory')
+    nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='red')
 
-    plt.xlim(0, MAP_WIDTH)
-    plt.ylim(0, MAP_HEIGHT)
+    # plt.xlim(0, MAP_WIDTH)
+    # plt.ylim(0, MAP_HEIGHT)
     plt.subplots_adjust(left=0, bottom=0, right=0.99, top=0.99)
 
     plt.show()

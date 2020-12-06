@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from cslam.experiments import ExperimentsManagerAbs
@@ -16,7 +17,7 @@ class ExperimentsManager(ExperimentsManagerAbs):
         if self._group is not None:
             raise ValueError("You cannot launch an ExperimentsManager more than once.")
         # create communication group
-        self._group = DTCommunicationGroup(topic, msg_type)
+        self._group = DTCommunicationGroup(topic, msg_type, loglevel=logging.DEBUG)
         # create subscribers
         self._sub = self._group.Subscriber(self._cb)
 

@@ -2,6 +2,7 @@ import dataclasses
 import numpy as np
 
 from geometry_msgs.msg import Transform, TransformStamped
+from tf import transformations as tr
 
 
 @dataclasses.dataclass
@@ -13,6 +14,14 @@ class TF:
     def Q(self, order='xyzw'):
         idx = ['xyzw'.index(a) for a in order]
         return np.array([self.q[i] for i in idx])
+
+    def T(self):
+        return tr.compose_matrix(translate=self.t, angles=tr.euler_from_quaternion(self.q))
+
+    @staticmethod
+    def from_T(T: np.ndarray):
+        _, _, angles, trans, _ = tr.decompose_matrix(T)
+        return TF(t=trans, q=tr.quaternion_from_euler(*angles))
 
 
 @dataclasses.dataclass

@@ -1,4 +1,6 @@
+from collections import defaultdict
 from typing import List, Dict
+import numpy as np
 
 from autolab_msgs.msg import AutolabReferenceFrame
 from geometry_msgs.msg import Transform, Quaternion
@@ -6,7 +8,7 @@ from geometry_msgs.msg import Transform, Quaternion
 from tf import transformations as tr
 
 from cslam import TFGraph
-from cslam.utils import Transform_to_TF
+from cslam.utils import Transform_to_TF, TF
 from .experiments import \
     ExperimentAbs, \
     ExperimentsManagerAbs
@@ -34,6 +36,8 @@ class TimedLocalizationExperiment(ExperimentAbs):
         self._fixed_tfs = {}
         # create graph
         self._graph = TFGraph()
+
+        self._first_dynamic = True
 
     @property
     def precision_ms(self) -> int:
@@ -80,22 +84,49 @@ class TimedLocalizationExperiment(ExperimentAbs):
         if (not msg.is_static) and (not msg.is_fixed):
             # handle origin
             origin_node_name = msg.origin.name
+            origin_time_ms = int(msg.origin.time.to_sec() * 1000)
             if msg.origin.type in MOVABLE_FRAMES:
-                origin_time_ms = int(msg.origin.time.to_sec() * 1000)
                 origin_node_name = f'{msg.origin.name}/{int(origin_time_ms // self._precision_ms)}'
             # handle target
             target_node_name = msg.target.name
+            target_time_ms = int(msg.target.time.to_sec() * 1000)
             if msg.target.type in MOVABLE_FRAMES:
-                target_time_ms = int(msg.target.time.to_sec() * 1000)
                 target_node_name = f'{msg.target.name}/{int(target_time_ms // self._precision_ms)}'
+
+
+            # print(origin_node_name, target_node_name, msg.origin.time.to_sec(), msg.target.time.to_sec())
+
+
+            __attrs = {}
+            if self._first_dynamic:
+                __attrs = {'fixed': True, 'pose': TF()}
+            self._first_dynamic = False
+
             # add nodes
             if not self._graph.has_node(origin_node_name):
-                self._graph.add_node(origin_node_name, **self._node_attrs(msg.origin))
+                self._graph.add_node(origin_node_name, **self._node_attrs(msg.origin), **__attrs)
             if not self._graph.has_node(target_node_name):
                 self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
             # add observations
             tf = Transform_to_TF(msg.transform)
-            self._graph.add_measurement(origin_node_name, target_node_name, tf)
+            self._graph.nodes[origin_node_name]['__tfs__'][(msg.origin.name, msg.target.name)].append(msg)
+            if origin_node_name != target_node_name:
+                # check if we have a list of observations to combine
+                msgs = self._graph.nodes[origin_node_name]['__tfs__'][(msg.origin.name, msg.target.name)]
+                # if len(msgs):
+                    # print('Found self-edges:')
+
+                T = tr.compose_matrix()
+
+                for _msg in sorted(msgs, key=lambda _m: _m.origin.time.to_sec(), reverse=True):
+                    # print(T)
+                    _tf = Transform_to_TF(_msg.transform)
+                    # print(_tf)
+                    T = np.dot(_tf.T(), T)
+                    # print(T)
+
+                self._graph.add_measurement(origin_node_name, target_node_name, TF.from_T(T))
+
 
         # store ALL fixed TFs
         if msg.is_fixed:
@@ -191,5 +222,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
             "time": rframe.time.to_sec(),
             "type": rframe.type,
             "robot": rframe.robot,
-            "__name__": rframe.name
+            "__name__": rframe.name,
+            "__tfs__": defaultdict(list)
         }
