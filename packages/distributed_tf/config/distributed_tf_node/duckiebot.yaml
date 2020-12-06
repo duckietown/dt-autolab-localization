@@ -1,5 +1,6 @@
 # parameters for distributed_tf_node
-min_distance_odom: 0.2
+min_distance_odom: 0.05
+max_time_between_poses: 1
 
 transforms:
   - origin: "{veh}/footprint"

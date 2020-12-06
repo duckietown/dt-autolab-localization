@@ -31,32 +31,14 @@ class DistributedTFNode(DTROS):
             node_name='distributed_tf_node',
             node_type=NodeType.SWARM
         )
-        # get static parameter - `~veh`
-        try:
-            self.robot_hostname = rospy.get_param('~veh')
-        except KeyError:
-            self.logerr('The parameter ~veh was not set, the node will abort.')
-            exit(1)
-        # get static parameter - `~map`
-        try:
-            self.map_name = _sanitize_hostname(rospy.get_param('~map'))
-        except KeyError:
-            self.logerr('The parameter ~map was not set, the node will abort.')
-            exit(2)
-        # get static parameter - `~tag_id`
-        try:
-            self.tag_id = rospy.get_param('~tag_id')
-        except KeyError:
-            self.logerr('The parameter ~tag_id was not set, the node will abort.')
-            exit(3)
-        # get static parameter - `~min_distance_odom`
-        try:
-            self.min_distance_odom = rospy.get_param('~min_distance_odom')
-        except KeyError:
-            self.logerr('The parameter ~min_distance_odom was not set, the node will abort.')
-            exit(4)
-        # get static parameter - `~transforms`
+        # get static parameters
+        self.robot_hostname = rospy.get_param('~veh')
+        self.map_name = _sanitize_hostname(rospy.get_param('~map'))
+        self.tag_id = rospy.get_param('~tag_id')
+        self.min_distance_odom = rospy.get_param('~min_distance_odom')
+        self.max_time_between_poses = rospy.get_param('~max_time_between_poses')
         self.transforms = rospy.get_param('~transforms', [])
+        # apply values to templated TFs
         for tf in self.transforms:
             tf['origin'] = tf['origin'].format(veh=self.robot_hostname, tag_id=self.tag_id)
             tf['target'] = tf['target'].format(veh=self.robot_hostname, tag_id=self.tag_id)
@@ -95,7 +77,7 @@ class DistributedTFNode(DTROS):
         self._tf_pub = self._group.Publisher()
         # fetch/publish right away and then set timers
         if self.tag_id != '__NOTSET__':
-            self._fetch_static_tfs()
+            # self._fetch_static_tfs()
             self._publish_static_tfs()
             # TODO: disabled because TFs were added to the YAML config file since ROS does not like multiple URDFs combination
             # self._tf_static_timer = rospy.Timer(
@@ -176,7 +158,6 @@ class DistributedTFNode(DTROS):
         if self._pose_last is None:
             self._pose_last = pose_now
             return
-
         # Only add the transform if the new pose is sufficiently different
         t_now_to_world = np.array([pose_now.pose.pose.position.x,
                                    pose_now.pose.pose.position.y,
@@ -207,6 +188,11 @@ class DistributedTFNode(DTROS):
         dist = np.linalg.norm(t_now_to_last)
 
         if dist < self.min_distance_odom:
+            return
+
+        elapsed_time = pose_now.header.stamp.to_sec() - self._pose_last.header.stamp.to_sec()
+        if elapsed_time > self.max_time_between_poses:
+            self._pose_last = pose_now
             return
 
         # compute TF between `pose_now` and `pose_last`
@@ -240,6 +226,8 @@ class DistributedTFNode(DTROS):
         )
         # publish
         self._tf_pub.publish(tf, destination=self.map_name)
+        # update last pose
+        self._pose_last = pose_now
 
 
 def _sanitize_hostname(s: str):
