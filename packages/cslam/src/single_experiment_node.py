@@ -10,9 +10,7 @@ import tf
 import networkx as nx
 import matplotlib.image as pimage
 import matplotlib.pyplot as plt
-from autolab_msgs.msg import \
-    AutolabReferenceFrame
-from autolab_msgs.msg import AutolabTransform
+from autolab_msgs.msg import AutolabReferenceFrame, AutolabTransform
 
 from cslam import TimedLocalizationExperiment
 from cslam_app import manager, logger
