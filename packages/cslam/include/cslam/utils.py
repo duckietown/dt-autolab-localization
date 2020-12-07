@@ -4,6 +4,8 @@ import numpy as np
 from geometry_msgs.msg import Transform, TransformStamped
 from tf import transformations as tr
 
+INFTY = 9999999
+
 
 @dataclasses.dataclass
 class TF:
