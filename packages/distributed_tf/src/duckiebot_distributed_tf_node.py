@@ -23,8 +23,9 @@ import tf.transformations as tr
 
 
 class DistributedTFNode(DTROS):
+
     FETCH_TF_STATIC_EVERY_SECS = 60
-    PUBLISH_TF_STATIC_EVERY_SECS = 10
+    PUBLISH_TF_STATIC_EVERY_SECS = 2
 
     def __init__(self):
         super(DistributedTFNode, self).__init__(
