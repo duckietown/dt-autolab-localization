@@ -60,6 +60,12 @@ class TFGraph(OrderedMultiDiGraph):
             return default
         return self[name].get('fixed', default)
 
+    def get_pose(self, name):
+        if name not in self:
+            raise KeyError(f"Node `{name}` not found.")
+            return None
+        return self.nodes[name]['pose']
+
     def optimize(self, max_iterations=20):
         optimizer = G2OPoseGraphOptimizer()
         id_to_name = {}
