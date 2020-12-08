@@ -127,7 +127,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 )
                 traj.append({
                     'timestamp': ndata["time"],
-                    'transform': T.tolist()
+                    'pose': T.tolist()
                 })
         # sort trajectory by time
         strategy = lambda tf: tf['timestamp']

@@ -100,6 +100,8 @@ class ExperimentAbs(abc.ABC):
                (time.time() - self._stime < self._duration)
 
     def stop(self, block: bool = True):
+        if self._status == ExperimentStatus.STOPPED:
+            return
         if self._status != ExperimentStatus.RUNNING:
             raise ValueError('You cannot stop an experiment that is not `RUNNING`.')
         self._status = ExperimentStatus.STOPPED
