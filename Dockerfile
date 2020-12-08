@@ -92,3 +92,4 @@ RUN pip3 uninstall -y dataclasses
 # copy the ApriltagsDB code
 # TODO: this is temporary, only used because the apriltag-postproc node is a mess
 COPY ./assets/apriltagsDB.yaml "${REPO_PATH}/assets/apriltagsDB.yaml"
+COPY ./assets/maps "${REPO_PATH}/assets/maps"
