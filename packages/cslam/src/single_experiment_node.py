@@ -84,10 +84,6 @@ if __name__ == '__main__':
     logger.info(f'Experiment terminated. The graph has '
                 f'{experiment.graph.number_of_nodes()} nodes and '
                 f'{experiment.graph.number_of_edges()} edges.')
-    # optimize
-    logger.info('Optimizing...')
-    experiment.optimize()
-    logger.info('Done!')
 
     # show graph
     G = experiment.graph
