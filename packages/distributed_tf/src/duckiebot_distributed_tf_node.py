@@ -165,7 +165,6 @@ class DistributedTFNode(DTROS):
         if not self._reminder.is_time():
             return
 
-
         # Only add the transform if the new pose is sufficiently different
         t_now_to_world = np.array([pose_now.pose.pose.position.x,
                                    pose_now.pose.pose.position.y,
@@ -184,24 +183,17 @@ class DistributedTFNode(DTROS):
         q_world_to_last = q_last_to_world
         q_world_to_last[3] *= -1
         q_now_to_last = tr.quaternion_multiply(q_world_to_last, q_now_to_world)
+        world_to_last = np.matrix(tr.quaternion_matrix(q_world_to_last))
 
-        now_to_last = np.matrix(tr.quaternion_matrix(q_now_to_last))
+        #now_to_last = np.matrix(tr.quaternion_matrix(q_now_to_last))
         # print(now_to_last)
-        now_to_last = now_to_last[0:3][:, 0:3]
+        #now_to_last = now_to_last[0:3][:, 0:3]
+        R_world_to_last = world_to_last[0:3][:, 0:3]
         # print(now_to_last)
-        t_now_to_last = np.array(np.dot(now_to_last, t_now_to_world - t_last_to_world))
+        #t_now_to_last = np.array(np.dot(now_to_last, t_now_to_world - t_last_to_world))
+        t_now_to_last = np.array(np.dot(R_world_to_last, t_now_to_world - t_last_to_world))
 
-        # print (t_now_to_last)
         t_now_to_last = t_now_to_last.flatten()
-
-        # dist = np.linalg.norm(t_now_to_last)
-        # if dist < self.min_distance_odom:
-        #     return
-        #
-        # elapsed_time = pose_now.header.stamp.to_sec() - self._pose_last.header.stamp.to_sec()
-        # if elapsed_time > self.max_time_between_poses:
-        #     self._pose_last = pose_now
-        #     return
 
         # compute TF between `pose_now` and `pose_last`
         transform = Transform(

@@ -17,7 +17,7 @@ from cslam_app import manager, logger
 
 # constants
 MAP_NAME = "TTIC_large_loop"
-EXPERIMENT_DURATION = 12
+EXPERIMENT_DURATION = 20
 PRECISION_MSECS = 500
 TRACKABLES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
@@ -90,9 +90,38 @@ if __name__ == '__main__':
     print(f'Nodes: {G.number_of_nodes()}')
     print(f'Edges: {G.number_of_edges()}')
 
-    # pos = nx.spring_layout(G)
-    pos = {}
+    #print('Is weakly connected:' + nx.is_weakly_connected(G))
 
+
+
+    # pos = {}
+    # for nname, ndata in G.nodes.data():
+    #     pos[nname] = ndata["pose"].t[:2] + [0, 1]
+    # for entity in ["world", "watchtower", "autobot", "tag/3"]:
+    #     nx.draw_networkx_nodes(
+    #         G,
+    #         pos,
+    #         nodelist=nodelist(G, entity),
+    #         node_shape=marker(entity),
+    #         node_color=color(entity),
+    #         node_size=300
+    #     )
+    #
+    # edges = set()
+    # for edge in G.edges:
+    #     edges.add((edge[0], edge[1]))
+    # nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='blue')
+
+
+
+
+    # optimize
+    # logger.info('Optimizing...')
+    # experiment.optimize()
+    # logger.info('Done!')
+
+    print('here')
+    pos = {}
     for nname, ndata in G.nodes.data():
         pos[nname] = ndata["pose"].t[:2]
 
@@ -151,7 +180,7 @@ if __name__ == '__main__':
             nodelist=nodelist(G, entity),
             node_shape=marker(entity),
             node_color=color(entity),
-            node_size=300
+            node_size=150
         )
 
     edges = set()

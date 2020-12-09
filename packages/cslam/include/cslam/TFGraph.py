@@ -4,6 +4,7 @@ from networkx import OrderedMultiDiGraph
 from .G2OPoseGraphOptimizer import G2OPoseGraphOptimizer
 from .utils import TF
 from tf import transformations as tr
+import numpy as np
 
 
 class TFGraph(OrderedMultiDiGraph):
@@ -29,8 +30,8 @@ class TFGraph(OrderedMultiDiGraph):
             # print(f'Adding node "{name}" w/ {attr}')
             super(TFGraph, self).add_node(name, **attr)
 
-    def add_measurement(self, origin: str, target: str, measurement: TF):
-        self.add_edge(origin, target, measurement=measurement)
+    def add_measurement(self, origin: str, target: str, measurement: TF, information: np.array = np.eye(6)):
+        self.add_edge(origin, target, measurement=measurement, information=information)
 
     def add_edge(self, u, v, key=None, **attr):
         if "measurement" not in attr:
@@ -58,6 +59,13 @@ class TFGraph(OrderedMultiDiGraph):
                 raise KeyError(f"Node `{name}` not found.")
             return default
         return self[name].get('fixed', default)
+
+    def get_pose(self, name):
+        if name not in self:
+            return None
+        if 'pose' not in self.nodes[name]:
+            return None
+        return self.nodes[name]['pose']
 
     def optimize(self, max_iterations=20):
         optimizer = G2OPoseGraphOptimizer()
