@@ -40,8 +40,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
         # create graph
         self._graph = TFGraph()
 
-        self._first_dynamic = True
-
     @property
     def precision_ms(self) -> int:
         return self._precision_ms
@@ -142,11 +140,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
             if msg.target.type in MOVABLE_FRAMES:
                 target_node_name = f'{msg.target.name}/{int(target_time_ms // self._precision_ms)}'
 
-            __attrs = {}
-            if self._first_dynamic:
-                __attrs = {'fixed': True, 'pose': TF()}
-            self._first_dynamic = False
-
             # add nodes
             if not self._graph.has_node(origin_node_name):
 
@@ -165,13 +158,13 @@ class TimedLocalizationExperiment(ExperimentAbs):
                     T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
                     tf_origin  = TF.from_T(T_origin)
 
-                    self._graph.add_node(origin_node_name, pose=tf_origin, **self._node_attrs(msg.origin), **__attrs)
+                    self._graph.add_node(origin_node_name, pose=tf_origin, **self._node_attrs(msg.origin))
                 else:
                     # Don't add watchtower node if target node doesn't exist
                     if msg.origin.type in SATELLITE_FRAMES:
                         return
 
-                    self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin), **__attrs)
+                    self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin))
 
             tf = Transform_to_TF(msg.transform)
 
