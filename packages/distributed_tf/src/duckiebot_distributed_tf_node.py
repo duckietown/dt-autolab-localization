@@ -6,6 +6,7 @@ import tf2_ros
 import threading
 import numpy as np
 
+from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType
 from dt_communication_utils import DTCommunicationGroup
 from autolab_msgs.msg import \
@@ -97,6 +98,7 @@ class DistributedTFNode(DTROS):
             queue_size=1
         )
         self._pose_last = None
+        self._reminder = DTReminder(frequency=10)
 
     def on_shutdown(self):
         if hasattr(self, '_group') and self._group is not None:
@@ -159,6 +161,11 @@ class DistributedTFNode(DTROS):
         if self._pose_last is None:
             self._pose_last = pose_now
             return
+
+        if not self._reminder.is_time():
+            return
+
+
         # Only add the transform if the new pose is sufficiently different
         t_now_to_world = np.array([pose_now.pose.pose.position.x,
                                    pose_now.pose.pose.position.y,
@@ -186,15 +193,15 @@ class DistributedTFNode(DTROS):
 
         # print (t_now_to_last)
         t_now_to_last = t_now_to_last.flatten()
-        dist = np.linalg.norm(t_now_to_last)
 
-        if dist < self.min_distance_odom:
-            return
-
-        elapsed_time = pose_now.header.stamp.to_sec() - self._pose_last.header.stamp.to_sec()
-        if elapsed_time > self.max_time_between_poses:
-            self._pose_last = pose_now
-            return
+        # dist = np.linalg.norm(t_now_to_last)
+        # if dist < self.min_distance_odom:
+        #     return
+        #
+        # elapsed_time = pose_now.header.stamp.to_sec() - self._pose_last.header.stamp.to_sec()
+        # if elapsed_time > self.max_time_between_poses:
+        #     self._pose_last = pose_now
+        #     return
 
         # compute TF between `pose_now` and `pose_last`
         transform = Transform(
