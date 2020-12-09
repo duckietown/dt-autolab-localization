@@ -153,7 +153,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
             both_movable = msg.origin.type in MOVABLE_FRAMES and msg.target.type in MOVABLE_FRAMES
             if not both_movable:
                 # Add target_node_name node if it doesn't exist
-                #
                 # multiple observations from or of a static frame
                 if not self._graph.has_node(target_node_name):
                     # When adding the target node, populate its initial pose
