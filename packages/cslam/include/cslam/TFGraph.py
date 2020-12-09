@@ -62,7 +62,6 @@ class TFGraph(OrderedMultiDiGraph):
 
     def get_pose(self, name):
         if name not in self:
-            raise KeyError(f"Node `{name}` not found.")
             return None
         return self.nodes[name]['pose']
 

@@ -40,8 +40,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
         # create graph
         self._graph = TFGraph()
 
-        self._first_dynamic = True
-
     @property
     def precision_ms(self) -> int:
         return self._precision_ms
@@ -127,7 +125,10 @@ class TimedLocalizationExperiment(ExperimentAbs):
             if msg.target.type in MOVABLE_FRAMES:
                 target_node_name = f'{msg.target.name}/{int(target_time_ms // self._precision_ms)}'
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> a6624b99426aa07ac54ef928613dec111d73d065
             # add nodes
             if not self._graph.has_node(origin_node_name):
 
@@ -135,6 +136,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 # on the pose of the target node if available
                 if self._graph.has_node(target_node_name):
                     tf_target = self._graph.get_pose(target_node_name)
+<<<<<<< HEAD
                     if tf_target:
                         # Set initial pose based on target pose and transform
                         T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
@@ -146,6 +148,26 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 else:
                     self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin))
 
+=======
+                    if not tf_target:
+                        tf_target = TF()
+
+                        # Only add watchtower node if the origin has a pose
+                        if msg.origin.type in SATELLITE_FRAMES:
+                            return
+
+                    # Set initial pose based on target pose and transform
+                    T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
+                    tf_origin  = TF.from_T(T_origin)
+
+                    self._graph.add_node(origin_node_name, pose=tf_origin, **self._node_attrs(msg.origin))
+                else:
+                    # Don't add watchtower node if target node doesn't exist
+                    if msg.origin.type in SATELLITE_FRAMES:
+                        return
+
+                    self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin))
+>>>>>>> a6624b99426aa07ac54ef928613dec111d73d065
 
             tf = Transform_to_TF(msg.transform)
 
