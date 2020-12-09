@@ -12,10 +12,11 @@ from autolab_msgs.msg import \
 # br = tf2_ros.TransformBroadcaster()
 
 group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
-
+shelf = set()
+printed = set()
 
 def cb(msg, _):
-    print(msg.origin.name, msg.target.name)
+    shelf.add((msg.origin.name, msg.target.name))
 
     # t = TransformStamped()
     #
@@ -25,6 +26,11 @@ def cb(msg, _):
     # t.transform = msg.transform
     #
     # br.sendTransform(t)
+
+    to_print = shelf.difference(printed)
+    for edge in to_print:
+        print(edge)
+    printed.update(to_print)
 
 
 print('Listening...')
