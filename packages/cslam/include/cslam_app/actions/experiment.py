@@ -63,8 +63,11 @@ def _experiment_stop(experiment_id: str):
     # get experiment
     if not manager.has(experiment_id):
         return response_error(f'Experiment with ID `{experiment_id}` not found.')
-    # stop experiment
     exp = manager.get(experiment_id)
+    # check status
+    if exp.status == ExperimentStatus.CREATED:
+        return response_error('You cannot stop an experiment that is not `RUNNING`.')
+    # stop experiment
     exp.stop(block=False)
     # ---
     return response_ok({
