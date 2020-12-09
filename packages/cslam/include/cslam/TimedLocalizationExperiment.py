@@ -173,7 +173,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
 
                     self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin), **__attrs)
 
-
             tf = Transform_to_TF(msg.transform)
 
             both_movable = msg.origin.type in MOVABLE_FRAMES and msg.target.type in MOVABLE_FRAMES
