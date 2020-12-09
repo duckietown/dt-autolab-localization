@@ -82,23 +82,15 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 if self._graph.has_node(msg.target.name):
                     tf_target = self._graph.get_pose(msg.target.name)
                     # There is no pose associated with target node
-                    if not tf_target:
-                        tf_target = TF()
+                    if tf_target:
+                        # Set initial pose based on target pose and transform
+                        T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
+                        tf_origin  = TF.from_T(T_origin)
 
-                        # Only add watchtower node if the origin has a pose
-                        if msg.origin.type in SATELLITE_FRAMES:
-                            return
-
-                    # Set initial pose based on target pose and transform
-                    T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
-                    tf_origin  = TF.from_T(T_origin)
-
-                    self._graph.add_node(msg.origin.name, pose=tf_origin, **self._node_attrs(msg.origin))
+                        self._graph.add_node(msg.origin.name, pose=tf_origin, **self._node_attrs(msg.origin))
+                    else:
+                        self._graph.add_node(msg.origin.name, **self._node_attrs(msg.origin))
                 else:
-                    # Don't add watchtower node if target node doesn't exist
-                    if msg.origin.type in SATELLITE_FRAMES:
-                        return
-
                     self._graph.add_node(msg.origin.name, **self._node_attrs(msg.origin))
 
             if not self._graph.has_node(msg.target.name):
@@ -106,23 +98,16 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 # on the pose of the origin node if available
                 if self._graph.has_node(msg.origin.name):
                     tf_origin = self._graph.get_pose(msg.origin.name)
-                    if not tf_origin:
-                        tf_origin = TF()
+                    if tf_origin:
 
-                        # Only add watchtower node if the origin has a pose
-                        if msg.target.type in SATELLITE_FRAMES:
-                            return
+                        # Set initial pose based on origin pose and transform
+                        T_target = np.dot(tf_origin.T(), tf.T())
+                        tf_target  = TF.from_T(T_target)
 
-                    # Set initial pose based on origin pose and transform
-                    T_target = np.dot(tf_origin.T(), tf.T())
-                    tf_target  = TF.from_T(T_target)
-
-                    self._graph.add_node(msg.target.name, pose=tf_target, **self._node_attrs(msg.target))
+                        self._graph.add_node(msg.target.name, pose=tf_target, **self._node_attrs(msg.target))
+                    else:
+                        self._graph.add_node(msg.target.name, **self._node_attrs(msg.target))
                 else:
-                    # Don't add watchtower node if target node doesn't exist
-                    if msg.target.type in SATELLITE_FRAMES:
-                        return
-
                     self._graph.add_node(msg.target.name, **self._node_attrs(msg.target))
 
             # add observations
@@ -142,10 +127,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
             if msg.target.type in MOVABLE_FRAMES:
                 target_node_name = f'{msg.target.name}/{int(target_time_ms // self._precision_ms)}'
 
-            __attrs = {}
-            if self._first_dynamic:
-                __attrs = {'fixed': True, 'pose': TF()}
-            self._first_dynamic = False
 
             # add nodes
             if not self._graph.has_node(origin_node_name):
@@ -154,24 +135,16 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 # on the pose of the target node if available
                 if self._graph.has_node(target_node_name):
                     tf_target = self._graph.get_pose(target_node_name)
-                    if not tf_target:
-                        tf_target = TF()
+                    if tf_target:
+                        # Set initial pose based on target pose and transform
+                        T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
+                        tf_origin  = TF.from_T(T_origin)
 
-                        # Only add watchtower node if the origin has a pose
-                        if msg.origin.type in SATELLITE_FRAMES:
-                            return
-
-                    # Set initial pose based on target pose and transform
-                    T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
-                    tf_origin  = TF.from_T(T_origin)
-
-                    self._graph.add_node(origin_node_name, pose=tf_origin, **self._node_attrs(msg.origin), **__attrs)
+                        self._graph.add_node(origin_node_name, pose=tf_origin, **self._node_attrs(msg.origin))
+                    else:
+                        self._graph.add_node(origin_node_name, *self._node_attrs(msg.origin))
                 else:
-                    # Don't add watchtower node if target node doesn't exist
-                    if msg.origin.type in SATELLITE_FRAMES:
-                        return
-
-                    self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin), **__attrs)
+                    self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin))
 
 
             tf = Transform_to_TF(msg.transform)
@@ -183,15 +156,15 @@ class TimedLocalizationExperiment(ExperimentAbs):
                     # When adding the target node, populate its initial pose
                     # based on the pose of the origin node if available
                     tf_origin = self._graph.get_pose(origin_node_name)
-                    if not tf_origin:
-                        tf_origin = TF()
-                        if msg.target.type in SATELLITE_FRAMES:
-                            return
+                    if tf_origin:
+                        T_target = np.dot(tf_origin.T(), tf.T())
+                        tf_target  = TF.from_T(T_target)
 
-                    T_target = np.dot(tf_origin.T(), tf.T())
-                    tf_target  = TF.from_T(T_target)
-
-                    self._graph.add_node(target_node_name, pose=tf_target, **self._node_attrs(msg.target))
+                        self._graph.add_node(target_node_name, pose=tf_target, **self._node_attrs(msg.target))
+                    else:
+                        self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
+                else:
+                    self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
                 self._graph.add_measurement(origin_node_name, target_node_name, tf)
             else:
@@ -213,15 +186,15 @@ class TimedLocalizationExperiment(ExperimentAbs):
 
                     if not self._graph.has_node(target_node_name):
                         tf_origin = self._graph.get_pose(origin_node_name)
-                        if not tf_origin:
-                            tf_origin = TF()
-                            if msg.target.type in SATELLITE_FRAMES:
-                                return
+                        if tf_origin:
+                            T_target = np.dot(tf_origin.T(), T)
+                            tf_target  = TF.from_T(T_target)
 
-                        T_target = np.dot(tf_origin.T(), T)
-                        tf_target  = TF.from_T(T_target)
-
-                        self._graph.add_node(target_node_name, pose=tf_target, **self._node_attrs(msg.target))
+                            self._graph.add_node(target_node_name, pose=tf_target, **self._node_attrs(msg.target))
+                        else:
+                            self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
+                    else:
+                        self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
                     self._graph.add_measurement(origin_node_name, target_node_name, TF.from_T(T))
 
