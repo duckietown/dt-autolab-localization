@@ -17,7 +17,7 @@ from cslam_app import manager, logger
 
 # constants
 MAP_NAME = "TTIC_large_loop"
-EXPERIMENT_DURATION = 12
+EXPERIMENT_DURATION = 20
 PRECISION_MSECS = 500
 TRACKABLES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
@@ -90,6 +90,8 @@ if __name__ == '__main__':
     print(f'Nodes: {G.number_of_nodes()}')
     print(f'Edges: {G.number_of_edges()}')
 
+    #print('Is weakly connected:' + nx.is_weakly_connected(G))
+
 
 
     # pos = {}
@@ -114,10 +116,11 @@ if __name__ == '__main__':
 
 
     # optimize
-    logger.info('Optimizing...')
-    experiment.optimize()
-    logger.info('Done!')
+    # logger.info('Optimizing...')
+    # experiment.optimize()
+    # logger.info('Done!')
 
+    print('here')
     pos = {}
     for nname, ndata in G.nodes.data():
         pos[nname] = ndata["pose"].t[:2]

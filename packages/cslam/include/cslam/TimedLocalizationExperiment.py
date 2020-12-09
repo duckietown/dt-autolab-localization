@@ -49,6 +49,11 @@ class TimedLocalizationExperiment(ExperimentAbs):
         return self._graph
 
     def __callback__(self, msg, _):
+        # store ALL fixed TFs
+        if msg.is_fixed:
+            tf_key = (msg.origin.name, msg.target.name)
+            self._fixed_tfs[tf_key] = msg
+
         # measurement type 1: a fixed (solid, rigid, not-observed) TF
         if msg.is_fixed and msg.origin.type in FIXED_FRAMES:
             # TODO: nodes are are always added with absolute pose (i.e., wrt /world frame)
@@ -97,7 +102,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 if self._graph.has_node(msg.origin.name):
                     tf_origin = self._graph.get_pose(msg.origin.name)
                     if tf_origin:
-
                         # Set initial pose based on origin pose and transform
                         T_target = np.dot(tf_origin.T(), tf.T())
                         tf_target  = TF.from_T(T_target)
@@ -125,7 +129,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
             if msg.target.type in MOVABLE_FRAMES:
                 target_node_name = f'{msg.target.name}/{int(target_time_ms // self._precision_ms)}'
 
-            # add nodes
+            # Add origin_node_name node if it doesn't exist
             if not self._graph.has_node(origin_node_name):
 
                 # When adding the origin node, populate its initial pose based
@@ -141,13 +145,15 @@ class TimedLocalizationExperiment(ExperimentAbs):
                     else:
                         self._graph.add_node(origin_node_name, *self._node_attrs(msg.origin))
                 else:
-                    self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin))
+                    self._graph.add_node(origin_node_name, **self._node_attrs(msg.origin))
 
 
             tf = Transform_to_TF(msg.transform)
 
             both_movable = msg.origin.type in MOVABLE_FRAMES and msg.target.type in MOVABLE_FRAMES
             if not both_movable:
+                # Add target_node_name node if it doesn't exist
+                %
                 # multiple observations from or of a static frame
                 if not self._graph.has_node(target_node_name):
                     # When adding the target node, populate its initial pose
@@ -160,8 +166,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
                         self._graph.add_node(target_node_name, pose=tf_target, **self._node_attrs(msg.target))
                     else:
                         self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
-                else:
-                    self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
                 self._graph.add_measurement(origin_node_name, target_node_name,
                                             tf)
@@ -181,7 +185,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
                         _tf = Transform_to_TF(_msg.transform)
                         T = np.dot(_tf.T(), T)
 
-
+                    # Add target_node_name node if it doesn't exist
                     if not self._graph.has_node(target_node_name):
                         tf_origin = self._graph.get_pose(origin_node_name)
                         if tf_origin:
@@ -191,15 +195,9 @@ class TimedLocalizationExperiment(ExperimentAbs):
                             self._graph.add_node(target_node_name, pose=tf_target, **self._node_attrs(msg.target))
                         else:
                             self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
-                    else:
-                        self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
                     self._graph.add_measurement(origin_node_name, target_node_name, TF.from_T(T))
 
-        # store ALL fixed TFs
-        if msg.is_fixed:
-            tf_key = (msg.origin.name, msg.target.name)
-            self._fixed_tfs[tf_key] = msg
 
     def __postprocess__(self):
         self.optimize()

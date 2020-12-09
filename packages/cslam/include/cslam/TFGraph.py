@@ -63,6 +63,8 @@ class TFGraph(OrderedMultiDiGraph):
     def get_pose(self, name):
         if name not in self:
             return None
+        if 'pose' not in self.nodes[name]:
+            return None
         return self.nodes[name]['pose']
 
     def optimize(self, max_iterations=20):
