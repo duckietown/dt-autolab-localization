@@ -22,9 +22,6 @@ FIXED_FRAMES = [
     AutolabReferenceFrame.TYPE_MAP_ORIGIN,
     AutolabReferenceFrame.TYPE_WORLD
 ]
-SATELLITE_FRAMES = [
-    AutolabReferenceFrame.TYPE_WATCHTOWER_CAMERA
-]
 
 
 class TimedLocalizationExperiment(ExperimentAbs):
@@ -49,6 +46,8 @@ class TimedLocalizationExperiment(ExperimentAbs):
         return self._graph
 
     def __callback__(self, msg, _):
+        tf = Transform_to_TF(msg.transform)
+
         # store ALL fixed TFs
         if msg.is_fixed:
             tf_key = (msg.origin.name, msg.target.name)
@@ -70,7 +69,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
             )
             self._graph.add_node(
                 msg.target.name,
-                pose=Transform_to_TF(msg.transform),
+                pose=tf,
                 fixed=True,
                 **self._node_attrs(msg.target)
             )
@@ -78,7 +77,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
         # measurement type 2: a static (solid, rigid, observed) TF
         if msg.is_static:
             # add nodes
-            tf = Transform_to_TF(msg.transform)
             if not self._graph.has_node(msg.origin.name):
                 # When adding the origin node, populate its initial pose based
                 # on the pose of the target node if available
@@ -88,9 +86,10 @@ class TimedLocalizationExperiment(ExperimentAbs):
                     if tf_target:
                         # Set initial pose based on target pose and transform
                         T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
-                        tf_origin  = TF.from_T(T_origin)
+                        tf_origin = TF.from_T(T_origin)
 
-                        self._graph.add_node(msg.origin.name, pose=tf_origin, **self._node_attrs(msg.origin))
+                        self._graph.add_node(msg.origin.name, pose=tf_origin,
+                                             **self._node_attrs(msg.origin))
                     else:
                         self._graph.add_node(msg.origin.name, **self._node_attrs(msg.origin))
                 else:
@@ -104,9 +103,10 @@ class TimedLocalizationExperiment(ExperimentAbs):
                     if tf_origin:
                         # Set initial pose based on origin pose and transform
                         T_target = np.dot(tf_origin.T(), tf.T())
-                        tf_target  = TF.from_T(T_target)
+                        tf_target = TF.from_T(T_target)
 
-                        self._graph.add_node(msg.target.name, pose=tf_target, **self._node_attrs(msg.target))
+                        self._graph.add_node(msg.target.name, pose=tf_target,
+                                             **self._node_attrs(msg.target))
                     else:
                         self._graph.add_node(msg.target.name, **self._node_attrs(msg.target))
                 else:
@@ -117,7 +117,6 @@ class TimedLocalizationExperiment(ExperimentAbs):
 
         # measurement type 3: a dynamic TF
         if (not msg.is_static) and (not msg.is_fixed):
-
             # handle origin
             origin_node_name = msg.origin.name
             origin_time_ms = int(msg.origin.time.to_sec() * 1000)
@@ -139,16 +138,15 @@ class TimedLocalizationExperiment(ExperimentAbs):
                     if tf_target:
                         # Set initial pose based on target pose and transform
                         T_origin = np.dot(tf_target.T(), tr.inverse_matrix(tf.T()))
-                        tf_origin  = TF.from_T(T_origin)
+                        tf_origin = TF.from_T(T_origin)
 
-                        self._graph.add_node(origin_node_name, pose=tf_origin, **self._node_attrs(msg.origin))
+                        self._graph.add_node(origin_node_name, pose=tf_origin,
+                                             **self._node_attrs(msg.origin))
                     else:
-                        self._graph.add_node(origin_node_name, *self._node_attrs(msg.origin))
+                        self._graph.add_node(origin_node_name, **self._node_attrs(msg.origin))
                 else:
-                    self._graph.add_node(origin_node_name, pose=TF(), **self._node_attrs(msg.origin))
-
-
-            tf = Transform_to_TF(msg.transform)
+                    self._graph.add_node(origin_node_name, pose=TF(),
+                                         **self._node_attrs(msg.origin))
 
             both_movable = msg.origin.type in MOVABLE_FRAMES and msg.target.type in MOVABLE_FRAMES
             if not both_movable:
@@ -160,16 +158,17 @@ class TimedLocalizationExperiment(ExperimentAbs):
                     tf_origin = self._graph.get_pose(origin_node_name)
                     if tf_origin:
                         T_target = np.dot(tf_origin.T(), tf.T())
-                        tf_target  = TF.from_T(T_target)
+                        tf_target = TF.from_T(T_target)
 
-                        self._graph.add_node(target_node_name, pose=tf_target, **self._node_attrs(msg.target))
+                        self._graph.add_node(target_node_name, pose=tf_target,
+                                             **self._node_attrs(msg.target))
                     else:
                         self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
-                self._graph.add_measurement(origin_node_name, target_node_name,
-                                            tf)
+                self._graph.add_measurement(origin_node_name, target_node_name, tf)
             else:
-                self._graph.nodes[origin_node_name]['__tfs__'][(msg.origin.name, msg.target.name)].append(msg)
+                self._graph.nodes[origin_node_name]['__tfs__'][
+                    (msg.origin.name, msg.target.name)].append(msg)
                 # TODO: this should be inside the message
                 odom_info_mat = np.eye(6)
                 odom_info_mat[3, 3] = INFTY
@@ -177,7 +176,8 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 # sequence of observations from and to movable frames
                 if origin_node_name != target_node_name:
                     # get list of observations to combine
-                    msgs = self._graph.nodes[origin_node_name]['__tfs__'][(msg.origin.name, msg.target.name)]
+                    msgs = self._graph.nodes[origin_node_name]['__tfs__'][
+                        (msg.origin.name, msg.target.name)]
                     # start with identity T
                     T = tr.compose_matrix()
                     for _msg in sorted(msgs, key=lambda _m: _m.origin.time.to_sec(), reverse=True):
@@ -189,14 +189,13 @@ class TimedLocalizationExperiment(ExperimentAbs):
                         tf_origin = self._graph.get_pose(origin_node_name)
                         if tf_origin:
                             T_target = np.dot(tf_origin.T(), T)
-                            tf_target  = TF.from_T(T_target)
-
-                            self._graph.add_node(target_node_name, pose=tf_target, **self._node_attrs(msg.target))
+                            tf_target = TF.from_T(T_target)
+                            self._graph.add_node(target_node_name, pose=tf_target,
+                                                 **self._node_attrs(msg.target))
                         else:
                             self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
                     self._graph.add_measurement(origin_node_name, target_node_name, TF.from_T(T))
-
 
     def __postprocess__(self):
         self.optimize()
@@ -279,7 +278,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
         # add new edges
         for (origin, target), tf in new_edges.items():
             if not self._graph.has_edge(origin, target):
-                self._graph.add_measurement(origin, target, tf, information=np.eye(6))# * INFTY)
+                self._graph.add_measurement(origin, target, tf, information=np.eye(6))  # * INFTY)
 
     @staticmethod
     def _node_attrs(rframe: AutolabReferenceFrame) -> dict:
