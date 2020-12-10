@@ -214,7 +214,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
     def trajectory(self, node: str) -> List[Dict[str, List]]:
         # collect all timed nodes corresponding to the node to track
         traj = []
-        for _, ndata in self._graph.nodes(data=True):
+        for nname, ndata in self._graph.nodes(data=True):
             if ndata['__name__'] == node:
                 T = tr.compose_matrix(
                     translate=ndata["pose"].t,
@@ -222,7 +222,11 @@ class TimedLocalizationExperiment(ExperimentAbs):
                 )
                 traj.append({
                     'timestamp': ndata["time"],
-                    'pose': T.tolist()
+                    'pose': T.tolist(),
+                    # TODO: this is a hack, should be done properly
+                    'observers': list({
+                        p[0] for e in self._graph.out_edges(nname) for p in self._graph.in_edges(e[1])
+                    } if 'footprint' in nname else {})
                 })
         # sort trajectory by time
         strategy = lambda tf: tf['timestamp']

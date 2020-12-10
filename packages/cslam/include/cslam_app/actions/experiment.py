@@ -9,7 +9,8 @@ from cslam_app.utils import response_ok, response_error
 blueprint = Blueprint('experiment', __name__)
 
 TRACKABLES = [
-    AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
+    AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
+    AutolabReferenceFrame.TYPE_WATCHTOWER_CAMERA
 ]
 
 
