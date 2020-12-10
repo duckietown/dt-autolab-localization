@@ -26,11 +26,14 @@ FIXED_FRAMES = [
 
 class TimedLocalizationExperiment(ExperimentAbs):
 
-    def __init__(self, manager: ExperimentsManagerAbs, duration: int, precision_ms: int,
-                 trackables: List[int]):
+    def __init__(self, manager: ExperimentsManagerAbs, duration: int, trackables: List[int],
+                 **kwargs):
         super().__init__(manager, duration)
+        # check params
+        if 'precision_ms' not in kwargs:
+            raise KeyError("Parameter `precision_ms` is mandatory.")
+        self._precision_ms = int(kwargs['precision_ms'])
         # store properties
-        self._precision_ms = precision_ms
         self._trackables = trackables
         # store fixed TFs
         self._fixed_tfs = {}

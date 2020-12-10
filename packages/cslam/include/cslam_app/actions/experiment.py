@@ -26,21 +26,16 @@ def _experiment_create():
     # get args
     exp_type = request.args.get('type', 'TimedLocalizationExperiment')
     duration = request.args.get('duration', None)
-    precision_ms = request.args.get('precision_ms', None)
     # check args
     if duration is None:
         return response_error("Argument `duration` is missing.")
-    if precision_ms is None:
-        return response_error("Argument `precision_ms` is missing.")
     # make a copy of the args
     kwargs = dict()
     kwargs.update(request.args)
     del kwargs['duration']
-    del kwargs['precision_ms']
     # parse args
     try:
         duration = int(duration)
-        precision_ms = int(precision_ms)
     except ValueError as e:
         return response_error(str(e))
     # create experiment
@@ -48,7 +43,7 @@ def _experiment_create():
         return response_error(f"Experiment type `{exp_type}` not found.")
     exp_class = EXPERIMENT_TYPES[exp_type]
     try:
-        exp = exp_class(manager, duration, precision_ms, TRACKABLES, **kwargs)
+        exp = exp_class(manager, duration, TRACKABLES, **kwargs)
     except KeyError as e:
         return response_error(f"Error: {str(e)}")
     return response_ok({
