@@ -2,7 +2,7 @@ from flask import request, Blueprint
 
 from autolab_msgs.msg import AutolabReferenceFrame
 
-from cslam import TimedLocalizationExperiment, ExperimentStatus
+from cslam import TimedLocalizationExperiment, LoggerExperiment, ExperimentStatus
 from cslam_app import manager
 from cslam_app.utils import response_ok, response_error
 
@@ -12,6 +12,10 @@ TRACKABLES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
     AutolabReferenceFrame.TYPE_WATCHTOWER_CAMERA
 ]
+EXPERIMENT_TYPES = {
+    'TimedLocalizationExperiment': TimedLocalizationExperiment,
+    'LoggerExperiment': LoggerExperiment
+}
 
 
 @blueprint.route('/experiment/create')
@@ -20,6 +24,7 @@ def _experiment_create():
     Creates a new experiment without starting it.
     """
     # get args
+    exp_type = request.args.get('type', 'TimedLocalizationExperiment')
     duration = request.args.get('duration', None)
     precision_ms = request.args.get('precision_ms', None)
     # check args
@@ -27,6 +32,11 @@ def _experiment_create():
         return response_error("Argument `duration` is missing.")
     if precision_ms is None:
         return response_error("Argument `precision_ms` is missing.")
+    # make a copy of the args
+    kwargs = dict()
+    kwargs.update(request.args)
+    del kwargs['duration']
+    del kwargs['precision_ms']
     # parse args
     try:
         duration = int(duration)
@@ -34,7 +44,13 @@ def _experiment_create():
     except ValueError as e:
         return response_error(str(e))
     # create experiment
-    exp = TimedLocalizationExperiment(manager, duration, precision_ms, TRACKABLES)
+    if exp_type not in EXPERIMENT_TYPES:
+        return response_error(f"Experiment type `{exp_type}` not found.")
+    exp_class = EXPERIMENT_TYPES[exp_type]
+    try:
+        exp = exp_class(manager, duration, precision_ms, TRACKABLES, **kwargs)
+    except KeyError as e:
+        return response_error(f"Error: {str(e)}")
     return response_ok({
         'id': exp.id
     })

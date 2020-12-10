@@ -66,7 +66,7 @@ class ExperimentsManagerAbs(abc.ABC):
 class ExperimentAbs(abc.ABC):
 
     def __init__(self, manager: ExperimentsManagerAbs,
-                 duration: int = MAX_EXPERIMENT_DURATION_SECS):
+                 duration: int = MAX_EXPERIMENT_DURATION_SECS, **kwargs):
         if not isinstance(manager, ExperimentsManagerAbs):
             raise ValueError("Argument `manager` must of type `cslam.ExperimentsManagerAbs`, "
                              f"got `{type(manager).__name__}` instead.")
@@ -104,12 +104,14 @@ class ExperimentAbs(abc.ABC):
             return
         if self._status != ExperimentStatus.RUNNING:
             raise ValueError('You cannot stop an experiment that is not `RUNNING`.')
+        self.__stop__()
         self._status = ExperimentStatus.STOPPED
         self.post_process(block)
 
     def start(self):
         self._stime = time.time()
         self._heart.start()
+        self.__start__()
         self._status = ExperimentStatus.RUNNING
 
     def join(self, timeout: int = None):
@@ -141,6 +143,12 @@ class ExperimentAbs(abc.ABC):
             raise ValueError('You cannot fetch the results of an experiment until it reaches '
                              'the status `FINISHED`.')
         return self.__results__()
+
+    def __start__(self):
+        pass
+
+    def __stop__(self):
+        pass
 
     @abc.abstractmethod
     def __callback__(self, msg, header):
