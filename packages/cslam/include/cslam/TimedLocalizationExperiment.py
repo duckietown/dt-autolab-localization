@@ -219,9 +219,12 @@ class TimedLocalizationExperiment(ExperimentAbs):
         traj = []
         for nname, ndata in self._graph.nodes(data=True):
             if ndata['__name__'] == node:
-                if not self._graph.has_trackable_neighbor(nname,
-                                                          self._trackables):
-                    continue
+                # Filter out Duckiebot nodes that are not connected to
+                # another Duckiebot node 
+                dbot_type = AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
+                if ndata["type"] == dbot_type:
+                    if not self._graph.has_neighbor_of_type(nname, dbot_type):
+                        continue
 
                 T = tr.compose_matrix(
                     translate=ndata["pose"].t,
