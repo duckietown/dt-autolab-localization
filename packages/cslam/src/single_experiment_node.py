@@ -17,7 +17,7 @@ from cslam_app import manager, logger
 
 # constants
 MAP_NAME = "TTIC_large_loop"
-EXPERIMENT_DURATION = 20
+EXPERIMENT_DURATION = 12
 PRECISION_MSECS = 500
 TRACKABLES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     # create experiment
     experiment = TimedLocalizationExperiment(
-        manager, EXPERIMENT_DURATION, PRECISION_MSECS, TRACKABLES)
+        manager, EXPERIMENT_DURATION, TRACKABLES, precision_ms=PRECISION_MSECS)
     experiment.start()
 
     # join experiment
