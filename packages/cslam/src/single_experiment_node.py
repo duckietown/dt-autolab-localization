@@ -112,15 +112,6 @@ if __name__ == '__main__':
     #     edges.add((edge[0], edge[1]))
     # nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='blue')
 
-
-
-
-    # optimize
-    # logger.info('Optimizing...')
-    # experiment.optimize()
-    # logger.info('Done!')
-
-    print('here')
     pos = {}
     for nname, ndata in G.nodes.data():
         pos[nname] = ndata["pose"].t[:2]
