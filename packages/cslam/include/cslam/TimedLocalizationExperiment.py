@@ -198,7 +198,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
                         else:
                             self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
-                    self._graph.add_measurement(origin_node_name, target_node_name, TF.from_T(T))
+                    self._graph.add_measurement(origin_node_name, target_node_name, TF.from_T(T),information=odom_info_mat)
 
     def __postprocess__(self):
         self.optimize()
@@ -219,6 +219,10 @@ class TimedLocalizationExperiment(ExperimentAbs):
         traj = []
         for nname, ndata in self._graph.nodes(data=True):
             if ndata['__name__'] == node:
+                if not self._graph.has_trackable_neighbor(nname,
+                                                          self._trackables):
+                    continue
+
                 T = tr.compose_matrix(
                     translate=ndata["pose"].t,
                     angles=tr.euler_from_quaternion(ndata["pose"].q)

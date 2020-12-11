@@ -60,6 +60,17 @@ class TFGraph(OrderedMultiDiGraph):
             return default
         return self[name].get('fixed', default)
 
+    def has_trackable_neighbor (self, name, trackables):
+        if name not in self:
+            raise KeyError(f"Node `{name}` not found.")
+            return False
+
+        for nname in self[name]:
+            if self.nodes[nname]['type'] in trackables:
+                return True
+
+        return False
+
     def get_pose(self, name):
         if name not in self:
             return None
