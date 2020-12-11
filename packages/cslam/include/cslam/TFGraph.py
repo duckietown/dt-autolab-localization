@@ -62,13 +62,10 @@ class TFGraph(OrderedMultiDiGraph):
 
     def has_neighbor_of_type(self, name, neighbor_type):
         if name not in self:
-            raise KeyError(f"Node `{name}` not found.")
             return False
-
         for nname in self[name]:
             if self.nodes[nname]['type'] == neighbor_type:
                 return True
-
         return False
 
     def get_pose(self, name):
