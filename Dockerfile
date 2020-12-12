@@ -83,9 +83,6 @@ LABEL org.duckietown.label.module.type="${REPO_NAME}" \
 # <== Do not change the code above this line
 # <==================================================
 
-# TODO: this is temporary, only used for matplotlib
-RUN apt update && apt install -y python3-tk
-
 # remove pip package `dataclasses`
 RUN pip3 uninstall -y dataclasses
 

@@ -8,8 +8,12 @@ from geometry_msgs.msg import TransformStamped, Transform, Quaternion, Vector3
 
 import tf
 import networkx as nx
-import matplotlib.image as pimage
+import matplotlib
+
+matplotlib.use('GTK3Agg')
+
 import matplotlib.pyplot as plt
+import matplotlib.image as pimage
 from autolab_msgs.msg import AutolabReferenceFrame, AutolabTransform
 
 from cslam import TimedLocalizationExperiment
