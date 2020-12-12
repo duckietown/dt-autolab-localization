@@ -75,6 +75,20 @@ class TFGraph(OrderedMultiDiGraph):
             return None
         return self.nodes[name]['pose']
 
+    def get_nearest_node_in_time(self, msec, type, precision=500):
+        closest = None
+        closest_node_time = None
+        dt_msec = precision
+        for nname, ndata in self.nodes(data=True):
+            if ndata['type'] == type:
+                a = nname.split('/')
+                node_time = int(a[2])
+                if abs(node_time-msec) < dt_msec:
+                    closest = nname
+                    closest_node_time = node_time
+                    dt_msec = abs(node_time-msec)
+        return closest, closest_node_time
+
     def optimize(self, max_iterations=20):
         optimizer = G2OPoseGraphOptimizer()
         id_to_name = {}

@@ -155,6 +155,15 @@ class TimedLocalizationExperiment(ExperimentAbs):
             if not both_movable:
                 # Add target_node_name node if it doesn't exist
                 # multiple observations from or of a static frame
+
+                # Replace the time in target_node_name with that of the
+                # Duckiebot deadreckon node nearest in time
+                target_time = int(target_time_ms // self._precision_ms)
+                closest, msec = self.graph.get_nearest_node_in_time (target_time, AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT, self._precision_ms)
+                if closest:
+                    a = target_node_name.split('/')
+                    target_node_name = a[0] + '/' + a[1] + '/' + str(msec)
+
                 if not self._graph.has_node(target_node_name):
                     # When adding the target node, populate its initial pose
                     # based on the pose of the origin node if available
@@ -168,7 +177,8 @@ class TimedLocalizationExperiment(ExperimentAbs):
                     else:
                         self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
-                self._graph.add_measurement(origin_node_name, target_node_name, tf)
+                self._graph.add_measurement(origin_node_name, target_node_name,
+                                            tf)
             else:
                 self._graph.nodes[origin_node_name]['__tfs__'][
                     (msg.origin.name, msg.target.name)].append(msg)
@@ -220,7 +230,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
         for nname, ndata in self._graph.nodes(data=True):
             if ndata['__name__'] == node:
                 # Filter out Duckiebot nodes that are not connected to
-                # another Duckiebot node 
+                # another Duckiebot node
                 dbot_type = AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
                 if ndata["type"] == dbot_type:
                     if not self._graph.has_neighbor_of_type(nname, dbot_type):
@@ -264,7 +274,11 @@ class TimedLocalizationExperiment(ExperimentAbs):
                         continue
                     # ---
                     new_node = f"{target}/{int((leaf['time'] * 1000) // self._precision_ms)}"
-                    # print(f'Adding node `{new_node}` and edge `{leaf_timed_name}` -> `{new_node}`')
+                    # HACK: Don't add nodes for trackable objects.
+                    #       They should already exist
+                    if not self._graph.has_node(new_node):
+                        continue
+                    #print(f'Origin: Adding node `{new_node}` and edge `{leaf_timed_name}` -> `{new_node}`')
                     # create new node
                     new_node_attrs = self._node_attrs(msg.target)
                     new_node_attrs['time'] = leaf['time']
@@ -278,7 +292,11 @@ class TimedLocalizationExperiment(ExperimentAbs):
                         continue
                     # ---
                     new_node = f"{origin}/{int((leaf['time'] * 1000) // self._precision_ms)}"
-                    # print(f'Adding node `{new_node}` and edge `{new_node}` -> `{leaf_timed_name}`')
+                    # HACK: Don't add nodes for trackable objects.
+                    #       They should already exist
+                    if not self._graph.has_node(new_node):
+                        continue
+                    #print(f'Target: Adding node `{new_node}` and edge `{new_node}` -> `{leaf_timed_name}`')
                     new_node_attrs = self._node_attrs(msg.origin)
                     new_node_attrs['time'] = leaf['time']
                     new_nodes[new_node] = new_node_attrs
