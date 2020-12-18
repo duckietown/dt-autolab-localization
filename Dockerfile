@@ -46,6 +46,23 @@ ENV DT_REPO_PATH "${REPO_PATH}"
 ENV DT_LAUNCH_PATH "${LAUNCH_PATH}"
 ENV DT_LAUNCHER "${LAUNCHER}"
 
+# download and install opencv-4.3.0 for the ArUco library
+RUN apt-get update && apt-get install unzip
+RUN cd / && wget -t 0 -T 15 -c https://github.com/opencv/opencv/archive/4.3.0.zip && \
+    unzip 4.3.0.zip && rm -r 4.3.0.zip && \
+    mkdir /opencv-4.3.0/build && cd /opencv-4.3.0/build && \
+    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. && make -j$(nproc) && make install && \
+    cd / && rm -r /opencv-4.3.0
+
+# download, fix the bug and install the ArUco library
+COPY ./packages/processing_node/src/aruco_bug_fixer.py /aruco_bug_fixer.py
+RUN cd / && wget -t 0 -T 15 -c https://sourceforge.net/projects/aruco/files/3.1.12/aruco-3.1.12.zip && \
+    unzip aruco-3.1.12.zip && rm -r aruco-3.1.12.zip && python3 aruco_bug_fixer.py && \
+    mkdir /aruco-3.1.12/build && cd /aruco-3.1.12/build && \
+    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_CXX_FLAGS="-std=c++11" .. && \
+    make -j$(nproc) && make install && ldconfig && \
+    cd / && rm -r /aruco-3.1.12 && rm aruco_bug_fixer.py
+
 # install apt dependencies
 COPY ./dependencies-apt.txt "${REPO_PATH}/"
 RUN dt-apt-install ${REPO_PATH}/dependencies-apt.txt
