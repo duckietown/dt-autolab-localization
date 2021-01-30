@@ -54,6 +54,14 @@ RUN cd / && wget -t 0 -T 15 -c https://github.com/opencv/opencv/archive/4.3.0.zi
     cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. && make -j$(nproc) && make install && \
     cd / && rm -r /opencv-4.3.0
 
+# download, fix the bug and install Boost.NumPy for python-boost binding
+COPY ./packages/processing_node/src/boost_numpy_bug_fixer.py /boost_numpy_bug_fixer.py
+RUN cd / && git clone https://github.com/ndarray/Boost.NumPy.git && python3 boost_numpy_bug_fixer.py && \
+    cd Boost.NumPy && mkdir build && cd build && \
+    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. && make -j$(nproc) && make install && \
+    cp lib/libboost_numpy.so /usr/local/lib/libboost_numpy.so && \
+    cd / && rm -r /Boost.NumPy && rm boost_numpy_bug_fixer.py
+
 # download, fix the bug and install the ArUco library
 COPY ./packages/processing_node/src/aruco_bug_fixer.py /aruco_bug_fixer.py
 RUN cd / && wget -t 0 -T 15 -c https://sourceforge.net/projects/aruco/files/3.1.12/aruco-3.1.12.zip && \
@@ -73,6 +81,12 @@ RUN pip3 install --use-feature=2020-resolver -r ${REPO_PATH}/dependencies-py3.tx
 
 # copy the source code
 COPY ./packages "${REPO_PATH}/packages"
+
+# build ArUco library adapter for python
+RUN apt-get update && apt-get install ros-noetic-image-geometry
+RUN cd "${REPO_PATH}/packages/processing_node/lib/aruco" && mkdir build && cd build && \
+    cmake -D CMAKE_BUILD_TYPE=Release .. && make -j$(nproc) aruco_caller && \
+    cp aruco_caller.so ../../../src/aruco_caller.so && cd .. && rm -r build
 
 # build packages
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \

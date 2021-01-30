@@ -1,7 +1,7 @@
 %YAML:1.0
 ---
 aruco-dictionary: "TAG36h11"
-aruco-maxThreads: 1
+aruco-maxThreads: 4
 #dcf-detectRate: 10
 #dcf-tau_s: 32
 #dcf-psr: 5.7

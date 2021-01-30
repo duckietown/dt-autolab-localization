@@ -1,0 +1,19 @@
+<launch>
+    <arg name="ndetectors" default="4"/>
+    <arg name="tag_size" default="0.065"/>
+    <arg name="rectify_alpha" default="0.0"/>
+    <arg name="detector_type" default="DFC"/> <!-- or "STD" -->
+    <arg name="detector_config" default="$(find processing_node)/config/config.yml"/>
+
+    <node name="apriltag_detector_node" type="apriltag_detector_node.py"
+          pkg="processing_node" output="screen" required="true">
+        <remap from="/apriltag_detector_node/camera_info" to="/watchtower02/camera_node/camera_info"/>
+        <remap from="/apriltag_detector_node/image" to="/watchtower02/camera_node/image/compressed"/>
+
+        <param name="ndetectors" value="$(arg ndetectors)"/>
+        <param name="tag_size" value="$(arg tag_size)"/>
+        <param name="rectify_alpha" value="$(arg rectify_alpha)"/>
+        <param name="detector_type" value="$(arg detector_type)"/>
+        <param name="detector_config" value="$(arg detector_config)"/>
+    </node>
+</launch>
