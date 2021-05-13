@@ -46,31 +46,6 @@ ENV DT_REPO_PATH "${REPO_PATH}"
 ENV DT_LAUNCH_PATH "${LAUNCH_PATH}"
 ENV DT_LAUNCHER "${LAUNCHER}"
 
-# download and install opencv-4.3.0 for the ArUco library
-RUN apt-get update && apt-get install unzip
-RUN cd / && wget -t 0 -T 15 -c https://github.com/opencv/opencv/archive/4.3.0.zip && \
-    unzip 4.3.0.zip && rm -r 4.3.0.zip && \
-    mkdir /opencv-4.3.0/build && cd /opencv-4.3.0/build && \
-    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. && make -j$(nproc) && make install && \
-    cd / && rm -r /opencv-4.3.0
-
-# download, fix the bug and install Boost.NumPy for python-boost binding
-COPY ./packages/processing_node/src/boost_numpy_bug_fixer.py /boost_numpy_bug_fixer.py
-RUN cd / && git clone https://github.com/ndarray/Boost.NumPy.git && python3 boost_numpy_bug_fixer.py && \
-    cd Boost.NumPy && mkdir build && cd build && \
-    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. && make -j$(nproc) && make install && \
-    cp lib/libboost_numpy.so /usr/local/lib/libboost_numpy.so && \
-    cd / && rm -r /Boost.NumPy && rm boost_numpy_bug_fixer.py
-
-# download, fix the bug and install the ArUco library
-COPY ./packages/processing_node/src/aruco_bug_fixer.py /aruco_bug_fixer.py
-RUN cd / && wget -t 0 -T 15 -c https://sourceforge.net/projects/aruco/files/3.1.12/aruco-3.1.12.zip && \
-    unzip aruco-3.1.12.zip && rm -r aruco-3.1.12.zip && python3 aruco_bug_fixer.py && \
-    mkdir /aruco-3.1.12/build && cd /aruco-3.1.12/build && \
-    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_CXX_FLAGS="-std=c++11" .. && \
-    make -j$(nproc) && make install && ldconfig && \
-    cd / && rm -r /aruco-3.1.12 && rm aruco_bug_fixer.py
-
 # install apt dependencies
 COPY ./dependencies-apt.txt "${REPO_PATH}/"
 RUN dt-apt-install ${REPO_PATH}/dependencies-apt.txt
@@ -79,14 +54,25 @@ RUN dt-apt-install ${REPO_PATH}/dependencies-apt.txt
 COPY ./dependencies-py3.txt "${REPO_PATH}/"
 RUN pip3 install --use-feature=2020-resolver -r ${REPO_PATH}/dependencies-py3.txt
 
+# download, fix the bug and install the ArUco library
+COPY ./assets/aruco_bug_fixer.py /tmp/aruco_bug_fixer.py
+RUN cd /tmp/ && \
+    wget -q -t 0 -T 15 -c https://sourceforge.net/projects/aruco/files/3.1.12/aruco-3.1.12.zip && \
+    unzip aruco-3.1.12.zip && \
+    rm aruco-3.1.12.zip && \
+    python3 aruco_bug_fixer.py && \
+    rm aruco_bug_fixer.py && \
+    mkdir aruco-3.1.12/build && \
+    cd aruco-3.1.12/build && \
+    cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_CXX_FLAGS="-std=c++11" .. && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    cd /tmp/ && \
+    rm -r aruco-3.1.12
+
 # copy the source code
 COPY ./packages "${REPO_PATH}/packages"
-
-# build ArUco library adapter for python
-RUN apt-get update && apt-get install ros-noetic-image-geometry
-RUN cd "${REPO_PATH}/packages/processing_node/lib/aruco" && mkdir build && cd build && \
-    cmake -D CMAKE_BUILD_TYPE=Release .. && make -j$(nproc) aruco_caller && \
-    cp aruco_caller.so ../../../src/aruco_caller.so && cd .. && rm -r build
 
 # build packages
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \

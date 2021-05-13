@@ -1,0 +1,34 @@
+<launch>
+    <!-- Mandatory args    -->
+	<arg name="veh" doc="The name of the robot (e.g., autobot01, watchtower02, ...)"/>
+    <!-- Optional args     -->
+    <arg name="pkg_name" value="aruco"/>
+    <arg name="node_name" default="apriltag_detector_node"/>
+    <!-- Node args     -->
+    <arg name="ndetectors" default="1"/>
+    <arg name="tag_size" default="0.065"/>
+    <arg name="rectify_alpha" default="0.0"/>
+    <arg name="detector_type" default="DFC"/> <!-- or "STD" -->
+    <arg name="detector_config" default="$(find aruco)/config/config.yml"/>
+
+    <!-- Subscription -->
+    <!-- "~camera_info": sensor_msgs/CameraInfo. Robot's camera information. -->
+    <!-- "~image":       sensor_msgs/CompressedImage. Robot's camera feed. -->
+
+    <!-- Publication -->
+    <!-- "~detections":  duckietown_msgs/AprilTagDetectionArray. Detected AprilTags. -->
+    <!-- "~image":       sensor_msgs/CompressedImage. Camera image with tag publishs superimposed. -->
+
+    <group ns="$(arg veh)">
+        <node name="$(arg node_name)" type="$(arg node_name).py" pkg="$(arg pkg_name)" output="screen" required="true">
+            <remap from="$(arg node_name)/camera_info" to="camera_node/camera_info"/>
+            <remap from="$(arg node_name)/image" to="camera_node/image/compressed"/>
+            <!--        -->
+            <param name="ndetectors" value="$(arg ndetectors)"/>
+            <param name="tag_size" value="$(arg tag_size)"/>
+            <param name="rectify_alpha" value="$(arg rectify_alpha)"/>
+            <param name="detector_type" value="$(arg detector_type)"/>
+            <param name="detector_config" value="$(arg detector_config)"/>
+        </node>
+    </group>
+</launch>

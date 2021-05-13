@@ -7,16 +7,10 @@ image, and get information about the location and orientation of the
 tags.
 """
 
-from __future__ import division
-from __future__ import print_function
-
 import os
-import sys
 import numpy
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(dir_path)  # add path to aruco_caller module
-import aruco_caller
+import aruco_python
 
 
 class Detection:
@@ -47,7 +41,7 @@ class Detection:
 
 
 class Detector(object):
-    """Python wrapper for ArUco library (actually for aruco_caller.cpp)"""
+    """Python wrapper for ArUco library (actually for aruco_python.cpp)"""
 
     def __init__(self, detector_type='DFC', marker_size=0.065, config_file="config.yml"):
         """Initializer for ArUco library
@@ -56,10 +50,10 @@ class Detector(object):
             marker_size (float): marker side length
             config_file (str): path to configuration yml file
         """
-        aruco_caller.aruco_init(detector_type, marker_size, config_file)
+        aruco_python.aruco_init(detector_type, marker_size, config_file)
 
     def __del__(self):
-        aruco_caller.aruco_destruct()
+        aruco_python.aruco_destruct()
 
     def detect(self, image, camera_matrix, dist_coeffs, img_height, img_width, uncompressed=False):
         """Main function that calls marker detection from ArUco library
@@ -84,9 +78,9 @@ class Detector(object):
 
         # choose right function
         if uncompressed:
-            aruco_detect_func = aruco_caller.aruco_detect_and_estimate
+            aruco_detect_func = aruco_python.aruco_detect_and_estimate
         else:
-            aruco_detect_func = aruco_caller.aruco_imdecode_detect_and_estimate
+            aruco_detect_func = aruco_python.aruco_imdecode_detect_and_estimate
         # detect markers in the image
         detections = aruco_detect_func(
             calib_dict, numpy.ndarray(shape=(1, len(image.data)), dtype=numpy.uint8, buffer=image.data))

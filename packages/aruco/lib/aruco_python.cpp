@@ -4,13 +4,14 @@
 #include <iostream>
 #include <opencv2/core.hpp>
 #include <boost/python.hpp>
-#include <boost/numpy/ndarray.hpp>
-#include <boost/numpy.hpp>
+#include <boost/python/numpy.hpp>
 #include "aruco.h"
 #include "dcf/dcfmarkertracker.h"
 
 using namespace std;
 using namespace boost::python;
+
+namespace np = boost::python::numpy;
 
 
 class IArucoDetector {
@@ -166,7 +167,7 @@ list aruco_detect_and_estimate_helper(const dict &calib_dict, const cv::Mat &ima
 
 /**Exactly the same with aruco_detect_and_estimate, but img_data contains compressed image
  */
-list aruco_imdecode_detect_and_estimate(const dict &calib_dict, const boost::numpy::ndarray &img_data) {
+list aruco_imdecode_detect_and_estimate(const dict &calib_dict, const np::ndarray &img_data) {
     cv::Mat buf(1, img_data.get_shape()[1], CV_8U, img_data.get_data());
     cv::Mat image = cv::imdecode(buf, 4);
 
@@ -179,7 +180,7 @@ list aruco_imdecode_detect_and_estimate(const dict &calib_dict, const boost::num
  *        numpy.ndarray(shape=(1, len(image.data)), dtype=numpy.uint8, buffer=image.data)
  * @return python list containing info about each detected marker
  */
-list aruco_detect_and_estimate(const dict &calib_dict, const boost::numpy::ndarray &img_data) {
+list aruco_detect_and_estimate(const dict &calib_dict, const np::ndarray &img_data) {
     cv::Size image_size;
     image_size.height = extract<int>(calib_dict["height"]);
     image_size.width = extract<int>(calib_dict["width"]);
@@ -190,8 +191,9 @@ list aruco_detect_and_estimate(const dict &calib_dict, const boost::numpy::ndarr
 
 /**Declares functions visible in python
  */
-BOOST_PYTHON_MODULE (aruco_caller) {
-    boost::numpy::initialize();
+BOOST_PYTHON_MODULE (aruco_python) {
+    Py_Initialize();
+    np::initialize();
     def("aruco_init", aruco_init);
     def("aruco_destruct", aruco_destruct);
     def("aruco_detect_and_estimate", aruco_detect_and_estimate);

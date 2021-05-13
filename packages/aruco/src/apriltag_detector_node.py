@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
+import math
+from concurrent.futures import ThreadPoolExecutor, Future
+from threading import Thread
+from typing import Optional, List
 
 import cv2
+import numpy as np
 import rospy
 import tf
-import math
-import numpy as np
-
-from threading import Thread
-from concurrent.futures import ThreadPoolExecutor
-from turbojpeg import TurboJPEG, TJPF_GRAY
+from duckietown_msgs.msg import AprilTagDetectionArray, AprilTagDetection
+from geometry_msgs.msg import Transform, Vector3, Quaternion
 from image_geometry import PinholeCameraModel
-from aruco_lib_adapter import Detector
+from sensor_msgs.msg import CameraInfo, CompressedImage
 
+from aruco_lib_adapter import Detector
 from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
-
-from duckietown_msgs.msg import AprilTagDetectionArray, AprilTagDetection
-from sensor_msgs.msg import CameraInfo, CompressedImage
-from geometry_msgs.msg import Transform, Vector3, Quaternion
+from duckietown.utils.image.ros import compressed_imgmsg_to_rgb, rgb_to_compressed_imgmsg
 
 
 class AprilTagDetector(DTROS):
@@ -28,7 +27,7 @@ class AprilTagDetector(DTROS):
             node_type=NodeType.PERCEPTION
         )
         # get static parameters
-        self.ndetectors = rospy.get_param('~ndetectors', 4)
+        self.ndetectors = rospy.get_param('~ndetectors', 1)
         self.tag_size = rospy.get_param('~tag_size', 0.065)
         self.rectify_alpha = rospy.get_param('~rectify_alpha', 0.0)
         self.detector_type = rospy.get_param('~detector_type', 'DFC')
@@ -52,8 +51,6 @@ class AprilTagDetector(DTROS):
             config_file=self.detector_config
         ) for _ in range(self.ndetectors)]
         self._renderer_busy = False
-        # create a CV bridge object
-        self._jpeg = TurboJPEG()
         # create subscribers
         self._img_sub = rospy.Subscriber(
             '~image',
@@ -85,7 +82,7 @@ class AprilTagDetector(DTROS):
         )
         # create thread pool
         self._workers = ThreadPoolExecutor(self.ndetectors)
-        self._tasks = [None] * self.ndetectors
+        self._tasks: List[Optional[Future]] = [None] * self.ndetectors
         # create TF broadcaster
         self._tf_bcaster = tf.TransformBroadcaster()
 
@@ -130,29 +127,11 @@ class AprilTagDetector(DTROS):
     def _detect(self, detector_id, msg):
         # find out if visualization is needed
         rendering_needed = (self._img_pub.anybody_listening() and not self._renderer_busy)
-        if rendering_needed:
-            # turn image message into grayscale image
-            with self.profiler('/cb/image/decode'):
-                img = self._jpeg.decode(msg.data, pixel_format=TJPF_GRAY)
-            # run input image through the rectification map
-            with self.profiler('/cb/image/rectify'):
-                img = cv2.remap(img, self._mapx, self._mapy, cv2.INTER_NEAREST)
-            # prepare arguments
-            rect_distortion = np.array([[0], [0], [0], [0]], dtype='float64')
-            cp = self._camera_parameters
-            rect_cam_matrix = np.array(
-                [[cp[0], 0,     cp[2]],
-                 [0,     cp[1], cp[3]],
-                 [0,     0,     0]], dtype='float64')
-            # detect tags
-            with self.profiler('/cb/image/detection'):
-                tags = self._detectors[detector_id].detect(
-                    img, rect_cam_matrix, rect_distortion, img.shape[0], img.shape[1], uncompressed=True)
-        else:
-            # detect tags
-            with self.profiler('/cb/image/detection'):
-                tags = self._detectors[detector_id].detect(
-                    msg, self.camera_model.K, self.camera_model.D, self.camera_model.height, self.camera_model.width)
+        # detect tags
+        with self.profiler('/cb/image/detection'):
+            tags = self._detectors[detector_id].detect(
+                msg, self.camera_model.K, self.camera_model.D,
+                self.camera_model.height, self.camera_model.width)
         # pack detections into a message
         tags_msg = AprilTagDetectionArray()
         tags_msg.header.stamp = msg.header.stamp
@@ -203,7 +182,7 @@ class AprilTagDetector(DTROS):
         # render visualization (if needed)
         if rendering_needed:
             self._renderer_busy = True
-            Thread(target=self._render_detections, args=(msg, img, tags)).start()
+            Thread(target=self._render_detections, args=(msg, tags)).start()
 
     def _img_cb(self, msg):
         # make sure we have received camera info
@@ -229,10 +208,11 @@ class AprilTagDetector(DTROS):
                 self._tasks[i] = self._workers.submit(self._detect, i, msg)
                 break
 
-    def _render_detections(self, msg, img, detections):
-        with self.profiler('/publishs_image'):
-            # get a color buffer from the BW image
-            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    def _render_detections(self, msg, detections):
+        # turn image message into grayscale image
+        with self.profiler('/renderer/image/decode'):
+            img = compressed_imgmsg_to_rgb(msg)
+        with self.profiler('/renderer/image/publish'):
             # draw each tag
             for detection in detections:
                 for idx in range(len(detection.corners)):
@@ -255,11 +235,8 @@ class AprilTagDetector(DTROS):
                     color=(0, 0, 255)
                 )
             # pack image into a message
-            img_msg = CompressedImage()
-            img_msg.header.stamp = msg.header.stamp
+            img_msg = rgb_to_compressed_imgmsg(img, "jpeg")
             img_msg.header.frame_id = msg.header.frame_id
-            img_msg.format = 'jpeg'
-            img_msg.data = self._jpeg.encode(img)
         # ---
         self._img_pub.publish(img_msg)
         self._renderer_busy = False
