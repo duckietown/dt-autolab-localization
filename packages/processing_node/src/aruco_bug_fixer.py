@@ -20,11 +20,15 @@ if __name__ == '__main__':
     Fixes bug with vectors assignment and removes unnecessary printing in ArUco library
     """
     for i in range(len(FILE_ARR)):
+        found = False
         with open(FILE_ARR[i], 'r') as f:
             lines = f.readlines()
         with open(FILE_ARR[i], 'w+') as f:
             for line in lines:
                 if line.strip() == OLD_ARR[i]:
                     f.write(NEW_ARR[i])
+                    found = True
                 else:
                     f.write(line)
+        if not found:
+            raise ValueError(f"No lines replaced in {FILE_ARR[i]}")
