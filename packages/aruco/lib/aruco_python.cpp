@@ -181,10 +181,9 @@ list aruco_imdecode_detect_and_estimate(const dict &calib_dict, const np::ndarra
  * @return python list containing info about each detected marker
  */
 list aruco_detect_and_estimate(const dict &calib_dict, const np::ndarray &img_data) {
-    cv::Size image_size;
-    image_size.height = extract<int>(calib_dict["height"]);
-    image_size.width = extract<int>(calib_dict["width"]);
-    cv::Mat image(image_size.height, image_size.width, CV_8U, img_data.get_data());
+    int height = extract<int>(calib_dict["height"]);
+    int width = extract<int>(calib_dict["width"]);
+    cv::Mat image(height, width, CV_8U, img_data.get_data());
 
     return aruco_detect_and_estimate_helper(calib_dict, image);
 }

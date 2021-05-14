@@ -42,8 +42,7 @@ class AprilTagDetector(DTROS):
         )
         self._detection_reminder = DTReminder(frequency=self.detection_freq.value)
         # camera info
-        self._camera_parameters = None
-        self._mapx, self._mapy = None, None
+        self.camera_model = None
         # create detector object
         self._detectors = [Detector(
             detector_type=self.detector_type,
@@ -91,31 +90,9 @@ class AprilTagDetector(DTROS):
         self._workers.shutdown()
 
     def _cinfo_cb(self, msg):
-        # create mapx and mapy
-        H, W = msg.height, msg.width
         # create new camera info
         self.camera_model = PinholeCameraModel()
         self.camera_model.fromCameraInfo(msg)
-        # find optimal rectified pinhole camera
-        with self.profiler('/cb/camera_info/get_optimal_new_camera_matrix'):
-            rect_K, _ = cv2.getOptimalNewCameraMatrix(
-                self.camera_model.K,
-                self.camera_model.D,
-                (W, H),
-                self.rectify_alpha
-            )
-            # store new camera parameters
-            self._camera_parameters = (rect_K[0, 0], rect_K[1, 1], rect_K[0, 2], rect_K[1, 2])
-        # create rectification map
-        with self.profiler('/cb/camera_info/init_undistort_rectify_map'):
-            self._mapx, self._mapy = cv2.initUndistortRectifyMap(
-                self.camera_model.K,
-                self.camera_model.D,
-                None,
-                rect_K,
-                (W, H),
-                cv2.CV_32FC1
-            )
         # once we got the camera info, we can stop the subscriber
         self.loginfo('Camera info message received. Unsubscribing from camera_info topic.')
         # noinspection PyBroadException
@@ -186,10 +163,7 @@ class AprilTagDetector(DTROS):
 
     def _img_cb(self, msg):
         # make sure we have received camera info
-        if self._camera_parameters is None:
-            return
-        # make sure we have a rectification map available
-        if self._mapx is None or self._mapy is None:
+        if self.camera_model is None:
             return
         # make sure somebody wants this
         if (not self._img_pub.anybody_listening()) and (not self._tag_pub.anybody_listening()):
