@@ -23,10 +23,9 @@
     </include>
 
     <!--  Node: distributed_tf_node  -->
-    <include file="$(find aruco)/launch/apriltag_detector_node.launch">
-        <arg name="veh" value="$(arg veh)"/>
-        <arg name="map" value="$(arg robot_map_name)"/>
-        <arg name="robot_type" value="$(arg robot_type)"/>
-        <arg name="robot_tag_id" value="$(arg robot_tag_id)"/>
-    </include>
+    <group if="$(eval robot_type == 'watchtower')">
+        <include file="$(find aruco)/launch/apriltag_detector_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
+    </group>
 </launch>

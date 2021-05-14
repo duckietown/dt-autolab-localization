@@ -16,7 +16,7 @@ dt-launchfile-init
 export PYTHONPATH=${PYTHONPATH}:${CATKIN_WS_DIR}/devel/lib
 
 # launching app
-dt-exec roslaunch aruco apriltag_detector_node.launch veh:="${VEHICLE_NAME}"
+dt-exec roslaunch --wait aruco apriltag_detector_node.launch veh:="${VEHICLE_NAME}"
 
 
 # ----------------------------------------------------------------------------

@@ -12,8 +12,11 @@ dt-launchfile-init
 # NOTE: Use the variable DT_REPO_PATH to know the absolute path to your code
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
+# make the `aruco_python.so` library discoverable
+export PYTHONPATH=${PYTHONPATH}:${CATKIN_WS_DIR}/devel/lib
+
 # launching app
-dt-exec roslaunch autolab-localization default.launch
+dt-exec roslaunch --wait autolab-localization default.launch
 
 
 # ----------------------------------------------------------------------------
