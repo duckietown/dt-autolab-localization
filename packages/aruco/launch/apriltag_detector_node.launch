@@ -5,7 +5,7 @@
     <arg name="pkg_name" value="aruco"/>
     <arg name="node_name" default="apriltag_detector_node"/>
     <!-- Node args     -->
-    <arg name="ndetectors" default="1"/>
+    <arg name="ndetectors" default="2"/>
     <arg name="tag_size" default="0.065"/>
     <arg name="rectify_alpha" default="0.0"/>
     <arg name="detector_type" default="DFC"/> <!-- or "STD" -->
