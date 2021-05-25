@@ -5,5 +5,5 @@ max_time_between_poses: 99999
 transforms:
   - origin: "{veh}/footprint"
     target: "tag/{tag_id}"
-    translation: [0.008, 0, 0.13]
-    rotation: [3.14, 0, -1.5708]
+    translation: [0, 0, 0]
+    rotation: [0, 0, 0]
