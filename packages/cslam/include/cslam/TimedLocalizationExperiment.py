@@ -208,7 +208,7 @@ class TimedLocalizationExperiment(ExperimentAbs):
                         else:
                             self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
-                    self._graph.add_measurement(origin_node_name, target_node_name, TF.from_T(T),information=odom_info_mat)
+                    self._graph.add_measurement(origin_node_name, target_node_name, TF.from_T(T), information=odom_info_mat)
 
     def __postprocess__(self):
         self.optimize()

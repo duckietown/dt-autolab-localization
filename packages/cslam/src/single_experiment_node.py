@@ -78,7 +78,7 @@ if __name__ == '__main__':
     experiment.start()
 
     # join experiment
-    logger.info(f'Waiting {EXPERIMENT_DURATION} seconds for observation to come in...')
+    logger.info(f'Waiting {EXPERIMENT_DURATION} seconds for observations to come in...')
     experiment.join()
 
     # stop the manager
