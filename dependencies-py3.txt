@@ -1,6 +1,6 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
 
-duckietown-world-daffy>=6.2.22
+duckietown-world-daffy>=6.2.23
 
 # matplotlib GTK backend
 PyGObject
