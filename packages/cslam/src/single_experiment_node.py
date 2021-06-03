@@ -61,7 +61,7 @@ def color(frame_type: str) -> str:
 
 
 def nodelist(g, prefix: str):
-    return [n for n in g if n.lstrip('/').startswith(prefix)]
+    return [n for n in g if n.startswith(prefix)]
 
 
 if __name__ == '__main__':
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     map_png = pimage.imread(png_filepath)
     plt.imshow(
         map_png,
-        origin='lower',
+        origin='upper',
         extent=[0, MAP_WIDTH, 0, MAP_HEIGHT]
     )
 
