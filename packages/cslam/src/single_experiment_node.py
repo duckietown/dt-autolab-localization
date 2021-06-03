@@ -164,7 +164,7 @@ if __name__ == '__main__':
     map_png = pimage.imread(png_filepath)
     plt.imshow(
         map_png,
-        origin='lower',
+        origin='upper',
         extent=[0, MAP_WIDTH, 0, MAP_HEIGHT]
     )
 
