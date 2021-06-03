@@ -61,7 +61,7 @@ def color(frame_type: str) -> str:
 
 
 def nodelist(g, prefix: str):
-    return [n for n in g if n.startswith(prefix)]
+    return [n for n in g if n.lstrip('/').startswith(prefix)]
 
 
 if __name__ == '__main__':
