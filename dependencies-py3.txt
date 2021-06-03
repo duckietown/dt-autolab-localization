@@ -5,3 +5,4 @@ duckietown-world-daffy>=6.2.21
 # matplotlib GTK backend
 PyGObject
 pycairo>=1.11.0
+
