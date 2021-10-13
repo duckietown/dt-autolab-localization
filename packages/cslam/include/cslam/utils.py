@@ -1,4 +1,6 @@
 import dataclasses
+from typing import Optional
+
 import numpy as np
 
 from geometry_msgs.msg import Transform, TransformStamped
@@ -11,19 +13,32 @@ INFTY = 9999999
 class TF:
     t: np.ndarray = np.array([0, 0, 0])
     q: np.ndarray = np.array([0, 0, 0, 1])
+    _T: Optional[np.ndarray] = None
     time_ms: int = -1
+
+    def __post_init__(self):
+        if self._T is None:
+            self._T = tr.compose_matrix(
+                translate=self.t,
+                angles=tr.euler_from_quaternion(self.q)
+            )
 
     def Q(self, order='xyzw'):
         idx = ['xyzw'.index(a) for a in order]
         return np.array([self.q[i] for i in idx])
 
+    @property
     def T(self):
-        return tr.compose_matrix(translate=self.t, angles=tr.euler_from_quaternion(self.q))
+        return self._T
 
     @staticmethod
-    def from_T(T: np.ndarray):
+    def from_T(T: np.ndarray) -> 'TF':
         _, _, angles, trans, _ = tr.decompose_matrix(T)
-        return TF(t=trans, q=tr.quaternion_from_euler(*angles))
+        return TF(
+            t=trans,
+            q=tr.quaternion_from_euler(*angles),
+            _T=T
+        )
 
 
 @dataclasses.dataclass

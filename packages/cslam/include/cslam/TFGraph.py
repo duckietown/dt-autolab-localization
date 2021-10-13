@@ -1,8 +1,8 @@
-import traceback
-
 import g2o
 from threading import Semaphore
 from networkx import OrderedMultiDiGraph
+
+from cslam_app.utils.T2Profiler import T2Profiler
 from .G2OPoseGraphOptimizer import G2OPoseGraphOptimizer
 from .utils import TF
 from tf import transformations as tr
@@ -35,8 +35,13 @@ class TFGraph(OrderedMultiDiGraph):
             # print(f'Adding node "{name}" w/ {attr}')
             super(TFGraph, self).add_node(name, **attr)
 
-    def add_measurement(self, origin: str, target: str, time: float, measurement: TF, information: np.array = np.eye(6)):
-        self.add_edge(origin, target, time=time, measurement=measurement, information=information)
+    def add_measurement(self, origin: str, target: str, time: float, measurement: TF,
+                        information: np.array = np.eye(6), **attr):
+        self.add_edge(origin, target,
+                      time=time,
+                      measurement=measurement,
+                      information=information,
+                      **attr)
 
     def add_edge(self, u, v, key=None, **attr):
         if "measurement" not in attr:
@@ -103,32 +108,33 @@ class TFGraph(OrderedMultiDiGraph):
         # populate optimizer
         with self._lock:
             # add vertices
-            for nname, ndata in self.nodes.items():
-                # compute node ID
-                node_id = len(id_to_name)
-                id_to_name[node_id] = nname
-                name_to_id[nname] = node_id
-                # get node pose and other attributes
-                pose = g2o.Isometry3d(g2o.Quaternion(ndata["pose"].Q('wxyz')), ndata["pose"].t) \
-                    if "pose" in ndata else None
-                fixed = ndata["fixed"] if "fixed" in ndata else False
-                # add vertex
-                optimizer.add_vertex(node_id, pose=pose, fixed=fixed)
+            with T2Profiler.profile("python-to-g2o-add-node"):
+                for nname, ndata in self.nodes.items():
+                    # compute node ID
+                    node_id = len(id_to_name)
+                    id_to_name[node_id] = nname
+                    name_to_id[nname] = node_id
+                    # get node pose and other attributes
+                    pose = g2o.Isometry3d(g2o.Quaternion(ndata["pose"].Q('wxyz')), ndata["pose"].t) \
+                        if "pose" in ndata else None
+                    fixed = ndata["fixed"] if "fixed" in ndata else False
+                    # add vertex
+                    optimizer.add_vertex(node_id, pose=pose, fixed=fixed)
             # add edges
-            for u, v, edata in self.edges.data():
-                # get nodes IDs
-                iu = name_to_id[u]
-                iv = name_to_id[v]
-                # get edge measurement and other attributes
-                measurement = edata["measurement"]
-                T = tr.compose_matrix(
-                    translate=measurement.t,
-                    angles=tr.euler_from_quaternion(measurement.q)
-                )
-                # add edge
-                optimizer.add_edge([iu, iv], g2o.Isometry3d(T))
+            with T2Profiler.profile("python-to-g2o-add-edge"):
+                for u, v, edata in self.edges.data():
+                    # get nodes IDs
+                    iu = name_to_id[u]
+                    iv = name_to_id[v]
+                    # get edge measurement and other attributes
+                    measurement = edata["measurement"]
+                    # add edge
+                    optimizer.add_edge([iu, iv], g2o.Isometry3d(measurement.T))
+
         # optimize
-        optimizer.optimize(max_iterations=max_iterations)
+        with T2Profiler.profile("g2o-optimize"):
+            optimizer.optimize(max_iterations=max_iterations)
+
         # update graph
         with self._lock:
             for nid, nname in id_to_name.items():
@@ -138,5 +144,9 @@ class TFGraph(OrderedMultiDiGraph):
                     angles=tr.euler_from_matrix(npose.R)
                 )
                 q = tr.quaternion_from_matrix(T)
-                self.nodes[nname]["pose"] = TF(t=npose.t, q=q)
+                if "pose" not in self.nodes[nname] or self.nodes[nname]["pose"] is None:
+                    self.nodes[nname]["pose"] = TF(t=npose.t, q=q)
+                else:
+                    self.nodes[nname]["pose"].t = npose.t
+                    self.nodes[nname]["pose"].q = q
                 self.nodes[nname]["optimized"] = True

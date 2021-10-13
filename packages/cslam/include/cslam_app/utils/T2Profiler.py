@@ -19,7 +19,7 @@ TABLE_ROW_FMT = "| {key} | {count} | {duration} | {frequency} |\n"
 
 class T2Profiler:
 
-    __enabled__: bool = True
+    __enabled__: bool = False
 
     class ProfilingContext:
         def __init__(self, key: str):
