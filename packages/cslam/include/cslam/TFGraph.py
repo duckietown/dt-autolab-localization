@@ -1,3 +1,5 @@
+import traceback
+
 import g2o
 from threading import Semaphore
 from networkx import OrderedMultiDiGraph
@@ -25,17 +27,22 @@ class TFGraph(OrderedMultiDiGraph):
         # default values
         if "fixed" not in attr:
             attr["fixed"] = False
+        # does the node exist?
+        if not self.has_node(name):
+            attr["optimized"] = False
         # ---
         with self._lock:
             # print(f'Adding node "{name}" w/ {attr}')
             super(TFGraph, self).add_node(name, **attr)
 
-    def add_measurement(self, origin: str, target: str, measurement: TF, information: np.array = np.eye(6)):
-        self.add_edge(origin, target, measurement=measurement, information=information)
+    def add_measurement(self, origin: str, target: str, time: float, measurement: TF, information: np.array = np.eye(6)):
+        self.add_edge(origin, target, time=time, measurement=measurement, information=information)
 
     def add_edge(self, u, v, key=None, **attr):
         if "measurement" not in attr:
             raise ValueError(f"Missing attribute `measurement` for edge ({u}, {v}).")
+        if "time" not in attr:
+            raise ValueError(f"Missing attribute `time` for edge ({u}, {v}).")
         if not isinstance(attr["measurement"], TF):
             raise ValueError("Edge attribute `measurement` must be of type `TF`.")
         # ---
@@ -132,3 +139,4 @@ class TFGraph(OrderedMultiDiGraph):
                 )
                 q = tr.quaternion_from_matrix(T)
                 self.nodes[nname]["pose"] = TF(t=npose.t, q=q)
+                self.nodes[nname]["optimized"] = True

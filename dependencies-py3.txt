@@ -1,6 +1,9 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
 
-duckietown-world-ente>=6.2.24
+# TODO: this was installed so that the duckietown robot could load its map and publish the ground
+#       tags TFs, with the new map format this is not necessary anymore
+
+#duckietown-world-ente>=6.2.24
 
 # matplotlib GTK backend
 PyGObject

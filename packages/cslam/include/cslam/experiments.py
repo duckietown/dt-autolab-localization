@@ -97,7 +97,7 @@ class ExperimentAbs(abc.ABC):
     @property
     def alive(self) -> bool:
         return self._status in [ExperimentStatus.CREATED, ExperimentStatus.RUNNING] and \
-               (time.time() - self._stime < self._duration)
+               (self._duration <= 0 or (time.time() - self._stime < self._duration))
 
     def stop(self, block: bool = True):
         if self._status == ExperimentStatus.STOPPED:
