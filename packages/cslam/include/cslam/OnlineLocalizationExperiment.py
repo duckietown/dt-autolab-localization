@@ -19,6 +19,7 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
         self._optimizer_timer = Thread(target=self._optimer_cb, args=(verbose,), daemon=True)
         self._optimize_every_secs = 2.0
         self._max_watchtower_to_groundtag_observations = 20
+        self._num_keep_optimized_nodes = 1
 
     def __start__(self):
         self._optimizer_timer.start()
@@ -71,7 +72,7 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
                     break
 
             if first_optimized_idx is not None:
-                to_delete = ndata[first_optimized_idx+1:]
+                to_delete = ndata[first_optimized_idx+self._num_keep_optimized_nodes:]
                 for node_key, _, _ in to_delete:
                     self._graph.remove_node(node_key)
                 if verbose:
