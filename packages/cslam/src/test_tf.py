@@ -35,7 +35,8 @@ def cb(msg, _):
 
     # print sorted edges
     for i, e in enumerate(sorted(shelf)):
-        stdscr.addstr(i, 0, str(e))
+        # pad some space to clear potentially longer previous outputs
+        stdscr.addstr(i, 0, str(e) + ' ' * 40)  
     stdscr.refresh()
 
 
