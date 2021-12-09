@@ -22,7 +22,7 @@ from cslam_app import manager, logger
 # constants
 MAP_NAME = "TTIC_large_loop"
 EXPERIMENT_DURATION = 12
-PRECISION_MSECS = 500
+PRECISION_MSECS = 100
 TRACKABLES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
 ]
