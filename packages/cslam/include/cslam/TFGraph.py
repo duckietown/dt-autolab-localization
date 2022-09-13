@@ -117,6 +117,10 @@ class TFGraph(OrderedMultiDiGraph):
                     # get node pose and other attributes
                     pose = g2o.Isometry3d(g2o.Quaternion(ndata["pose"].Q('wxyz')), ndata["pose"].t) \
                         if "pose" in ndata else None
+                    if "pose" in ndata:
+                        print(f"ADDING POSE FOR: {nname}\t {ndata['pose'].t}")
+                    else:
+                        print(f"NO POSE FOR: {nname}")
                     fixed = ndata["fixed"] if "fixed" in ndata else False
                     # add vertex
                     optimizer.add_vertex(node_id, pose=pose, fixed=fixed)

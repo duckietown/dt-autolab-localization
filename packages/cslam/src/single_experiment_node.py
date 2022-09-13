@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import os
+import time
 from collections import defaultdict
+from functools import partial
+from typing import List, Tuple
 
 import rospy
 import tf2_ros
@@ -22,10 +25,11 @@ from cslam import TimedLocalizationExperiment
 from cslam import OnlineLocalizationExperiment
 
 from cslam_app import manager, logger
+from dt_duckiematrix_protocols import Matrix
 
 # constants
 MAP_NAME = "TTIC_large_loop"
-EXPERIMENT_DURATION = 20
+EXPERIMENT_DURATION = 22
 PRECISION_MSECS = 100
 TRACKABLES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
@@ -73,6 +77,45 @@ def nodelist(g, prefix: str):
     return [n for n in g if n.lstrip('/').startswith(prefix)]
 
 
+matrix = Matrix(
+    "localhost",
+    auto_commit=True
+)
+matrix_vehicle_name = "map_0/vehicle_0"
+world_vehicle_name = "myrobot"
+robot = matrix.robots.DB21M(matrix_vehicle_name, raw_pose=True)
+
+
+def update_renderer(experiment: OnlineLocalizationExperiment):
+    # find poses
+    poses: List[Tuple[float, dict]] = []
+    for nname, ndata in experiment.nodes(lock=False):
+        if ndata["type"] not in [AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT]:
+            continue
+        if ndata["robot"] != world_vehicle_name:
+            continue
+        if not ndata["optimized"]:
+            continue
+        xyz = ndata["pose"].t
+        rpy = list(tf.transformations.euler_from_quaternion(ndata["pose"].q))
+        poses.append((ndata["time"], {
+            "x": xyz[0],
+            "y": xyz[1],
+            "yaw": rpy[2],
+        }))
+    # no poses?
+    if len(poses) <= 0:
+        return
+    # find most recent optimized pose
+    poses = sorted(poses, key=lambda _t: _t[0], reverse=True)
+    _, pose = poses[0]
+    # set pose on the viewer
+    robot.pose.x = pose["x"]
+    robot.pose.y = pose["y"]
+    robot.pose.yaw = pose["yaw"]
+    robot.pose.commit()
+
+
 if __name__ == '__main__':
     if ROS_TF_PUBLISHER:
         rospy.init_node('cslam-single-experiment-debug')
@@ -94,6 +137,7 @@ if __name__ == '__main__':
             precision_ms=PRECISION_MSECS,
             verbose=VERBOSE
         )
+        experiment.on_post_optimize(partial(update_renderer, experiment))
     else:
         experiment = TimedLocalizationExperiment(
             manager,
@@ -155,10 +199,10 @@ if __name__ == '__main__':
 
     # print poses
     for nname, ndata in G.nodes.data():
-        if ndata["type"] not in [AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT, AutolabReferenceFrame.TYPE_DUCKIEBOT_TAG]:
+        if ndata["type"] not in [AutolabReferenceFrame.TYPE_GROUND_TAG]:
             continue
         a = list(tf.transformations.euler_from_quaternion(ndata["pose"].q))
-        # print(f'Node[{nname}][{ndata["type"]}]:\n\t xyz: {ndata["pose"].t}\n\t rpw: {a}\n')
+        # print(f'Node[{nname}][{ndata["type"]}]:\n\t xyz: {ndata["pose"].t}\n\t rpy: {a}\n')
 
         if ROS_TF_PUBLISHER:
             t = TransformStamped()

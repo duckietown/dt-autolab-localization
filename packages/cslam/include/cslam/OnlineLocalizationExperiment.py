@@ -1,7 +1,7 @@
 import time
 from collections import defaultdict
 from threading import Thread
-from typing import List
+from typing import List, Callable, Dict, Set
 
 from autolab_msgs.msg import AutolabReferenceFrame
 
@@ -17,12 +17,27 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
         super().__init__(manager, -1, trackables, **kwargs)
         verbose = kwargs['verbose'] if 'verbose' in kwargs else False
         self._optimizer_timer = Thread(target=self._optimer_cb, args=(verbose,), daemon=True)
-        self._optimize_every_secs = 2.0
+        self._optimize_every_secs = 0.25
         self._max_watchtower_to_groundtag_observations = 20
         self._num_keep_optimized_nodes = 1
+        self._callbacks: Dict[str, Set[Callable]] = defaultdict(set)
 
     def __start__(self):
         self._optimizer_timer.start()
+
+    def on_pre_optimize(self, callback: Callable):
+        self._callbacks["pre-optimize"].add(callback)
+
+    def on_post_optimize(self, callback: Callable):
+        self._callbacks["post-optimize"].add(callback)
+
+    def _on_pre_optimize(self):
+        for cback in self._callbacks["pre-optimize"]:
+            cback()
+
+    def _on_post_optimize(self):
+        for cback in self._callbacks["post-optimize"]:
+            cback()
 
     def _prune_watchtower_to_groundtag(self, verbose: bool = False):
         watchtowers_groundtags = defaultdict(lambda: set())
@@ -109,12 +124,14 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
                 continue
             # ---
             with self._lock:
+                self._on_pre_optimize()
+
                 prev_num_nodes = self._graph.number_of_nodes()
                 prev_num_edges = self._graph.number_of_edges()
 
                 with T2Profiler.profile("online-optimize"):
                     with T2Profiler.profile("extend-graph"):
-                        self._extend_graph()
+                        self._extend_graph(lock=False)
 
                     with T2Profiler.profile("prune-edges-watchtower-to-groundtag"):
                         self._prune_watchtower_to_groundtag(verbose=verbose)
@@ -130,3 +147,5 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
                     print(f"Graph:\n"
                           f"\tNodes:\t{prev_num_nodes} -> {self._graph.number_of_nodes()}\n"
                           f"\tEdges:\t{prev_num_edges} -> {self._graph.number_of_edges()}\n")
+
+                self._on_post_optimize()
