@@ -1,8 +1,6 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
-
-duckietown-world-daffy>=6.2.24
+# NOTE: only place non-Duckietown libraries here; pin versions only if necessary
 
 # matplotlib GTK backend
 PyGObject
 pycairo>=1.11.0
-
