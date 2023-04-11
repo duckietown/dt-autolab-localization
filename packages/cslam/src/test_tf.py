@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import curses
+
 import rospy
 import tf2_ros
 from geometry_msgs.msg import TransformStamped
@@ -13,7 +15,11 @@ from autolab_msgs.msg import \
 
 group = DTCommunicationGroup("/autolab/tf", AutolabTransform)
 shelf = set()
-printed = set()
+
+# terminal repainting
+stdscr = curses.initscr()
+curses.noecho()
+curses.cbreak()
 
 def cb(msg, _):
     shelf.add((msg.origin.name, msg.target.name))
@@ -27,14 +33,20 @@ def cb(msg, _):
     #
     # br.sendTransform(t)
 
-    to_print = shelf.difference(printed)
-    for edge in to_print:
-        print(edge)
-    printed.update(to_print)
+    # print sorted edges
+    for i, e in enumerate(sorted(shelf)):
+        # pad some space to clear potentially longer previous outputs
+        stdscr.addstr(i, 0, str(e) + ' ' * 40)  
+    stdscr.refresh()
 
 
-print('Listening...')
-group.Subscriber(cb)
+try:
+    group.Subscriber(cb)
+finally:
+    curses.echo()
+    curses.nocbreak()
+    curses.endwin()
+
 
 # rospy.on_shutdown(group.shutdown)
 #
