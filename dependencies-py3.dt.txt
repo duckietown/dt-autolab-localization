@@ -1,4 +1,5 @@
 # LIST YOUR DUCKIETOWN PYTHON3 PACKAGES HERE
 # NOTE: only place Duckietown libraries here; these libraries will be resolved to the latest available version and pinned; pin a specific version only if necessary
 
+#TODO: still using 'daffy' here
 duckietown-world-daffy>=6.2.24
