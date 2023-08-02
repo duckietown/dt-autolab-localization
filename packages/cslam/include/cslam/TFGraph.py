@@ -32,7 +32,7 @@ class TFGraph(OrderedMultiDiGraph):
             attr["optimized"] = False
         # ---
         with self._lock:
-            # print(f'Adding node "{name}" w/ {attr}')
+            #print(f'Adding node "{name}" w/ {attr}') #PRINT
             super(TFGraph, self).add_node(name, **attr)
 
     def add_measurement(self, origin: str, target: str, time: float, measurement: TF,
@@ -52,7 +52,7 @@ class TFGraph(OrderedMultiDiGraph):
             raise ValueError("Edge attribute `measurement` must be of type `TF`.")
         # ---
         with self._lock:
-            # print(f'Adding edge "({u}, {v})" w/ {attr}')
+            #print(f'Adding edge "({u}, {v})" w/ {attr}') #PRINT
             super(TFGraph, self).add_edge(u, v, **attr)
 
     def add_nodes_from(self, nodes_for_adding, **attr):
@@ -82,6 +82,7 @@ class TFGraph(OrderedMultiDiGraph):
 
     def get_pose(self, name):
         if name not in self:
+            print("name not in graph") #TEMP
             return None
         if 'pose' not in self.nodes[name]:
             return None
@@ -133,7 +134,8 @@ class TFGraph(OrderedMultiDiGraph):
                     # get edge measurement and other attributes
                     measurement = edata["measurement"]
                     # add edge
-                    optimizer.add_edge([iu, iv], g2o.Isometry3d(measurement.T))
+                    #print(f"INFORMATION DATA: \n {edata['information']}")
+                    optimizer.add_edge([iu, iv], g2o.Isometry3d(measurement.T), edata["information"])
 
         # optimize
         with T2Profiler.profile("g2o-optimize"):
