@@ -1,6 +1,6 @@
 from matplotlib.pyplot import pause
-from ..include.cslam import TFGraph, TF
-from ..include.cslam.utils import create_info_matrix
+from cslam.include.cslam import TFGraph, TF
+from cslam.include.cslam.utils import create_info_matrix
 
 import numpy as np
 
