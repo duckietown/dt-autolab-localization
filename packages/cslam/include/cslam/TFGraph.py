@@ -82,7 +82,7 @@ class TFGraph(OrderedMultiDiGraph):
 
     def get_pose(self, name):
         if name not in self:
-            print("name not in graph") #TEMP
+            #print("name not in graph") #TEMP
             return None
         if 'pose' not in self.nodes[name]:
             return None
