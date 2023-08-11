@@ -64,6 +64,11 @@ class DistributedTFNode(DTROS):
             self._group.shutdown()
 
     def _cb_atag(self, msg):
+    
+    # compute variance using msg.center[0] (x value in img frame) and msg.center[1] (y value in img frame)
+    # height = 972 width = 1296     (center "0,0": 648, 486)
+    # msg.pose_error could also be used
+    
         for detection in msg.detections:
             if detection.tag_id not in self._tags:
                 continue
@@ -88,7 +93,10 @@ class DistributedTFNode(DTROS):
                 ),
                 is_fixed=False,
                 is_static=is_static,
-                transform=detection.transform
+                transform=detection.transform,
+                variance=(1/810) * np.sqrt((detection.center[0] - 648)**2 + (detection.center[1] - 486)**2)
+                #added variance to be a number from 0-1 based on the location of the april tag in the image
+                #further away from the center of the image = higher variance
             )
             # publish
             self._tf_pub.publish(tf, destination=self.map_name)

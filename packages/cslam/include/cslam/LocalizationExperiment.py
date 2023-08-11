@@ -49,9 +49,9 @@ class LocalizationExperiment(ExperimentAbs):
     def precision_ms(self) -> int:
         return self._precision_ms
 
-    # @property
-    # def graph(self) -> TFGraph:
-    #     return self._graph
+    @property
+    def graph(self) -> TFGraph:
+        return self._graph
 
     def nodes(self, lock: bool = True) -> Iterator[Tuple[str, dict]]:
         if lock:
@@ -184,6 +184,11 @@ class LocalizationExperiment(ExperimentAbs):
 
                 # Replace the time in target_node_name with that of the
                 # Duckiebot deadreckon node nearest in time
+                #print(msg.variance)
+                info_mat = np.eye(6)
+                #info_mat = info_mat * msg.variance
+                #added info matrix that is equal to an identity matrix * variance of the detection
+
                 target_time = int(target_time_ms // self._precision_ms)
                 closest, msec = self._graph.get_nearest_node_in_time(
                     target_time, AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
@@ -206,7 +211,7 @@ class LocalizationExperiment(ExperimentAbs):
                         self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
 
                 self._graph.add_measurement(origin_node_name, target_node_name, origin_time_secs,
-                                            tf, **self._edge_attrs(msg))
+                                            tf, information=info_mat, **self._edge_attrs(msg))
             else:
                 self._graph.nodes[origin_node_name]['__tfs__'][
                     (msg.origin.name, msg.target.name)].append(msg)

@@ -4,6 +4,7 @@ from threading import Thread
 from typing import List, Callable, Dict, Set
 
 from autolab_msgs.msg import AutolabReferenceFrame
+from nav_msgs.msg import Odometry
 
 from cslam_app.utils.T2Profiler import T2Profiler
 from .LocalizationExperiment import LocalizationExperiment
@@ -21,6 +22,9 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
         self._max_watchtower_to_groundtag_observations = 20
         self._num_keep_optimized_nodes = 1
         self._callbacks: Dict[str, Set[Callable]] = defaultdict(set)
+        #rospy.init_node("odometry_processor", anonymous=True)
+        #rospy.Subscriber("~/deadreckoning_node/odom", Odometry, odometry_callback)
+        #not sure if necessary, seems as though LocalizationExperiment already deals with odometry
 
     def __start__(self):
         self._optimizer_timer.start()
@@ -149,3 +153,6 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
                           f"\tEdges:\t{prev_num_edges} -> {self._graph.number_of_edges()}\n")
 
                 self._on_post_optimize()
+
+    #def odometry_callback(self,data):
+    #    print(data)

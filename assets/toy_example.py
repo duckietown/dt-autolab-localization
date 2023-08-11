@@ -13,7 +13,7 @@ np.random.seed(0)
 ground_truth = np.array([1, 2,])
 
 # List of 3 variance values
-variance_values = [0.1, 5, 0.05]
+variance_values = [0.1, 20, 0.05]
 
 # Create constraints to simulate having perfect measurements on the other axis and angles
 constrained_axis = [0, 1, 1, 1, 1, 1]
