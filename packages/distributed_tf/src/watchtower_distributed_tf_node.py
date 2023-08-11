@@ -6,6 +6,7 @@ import re
 import yaml
 import rospy
 import rospkg
+import numpy as np
 
 from duckietown.dtros import DTROS, NodeType
 from dt_communication_utils import DTCommunicationGroup
