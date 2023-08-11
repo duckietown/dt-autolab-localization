@@ -1,0 +1,13 @@
+<launch>
+    <arg name="veh" doc="Name of vehicle. ex: megaman"/>
+    <arg name="pkg_name" value="cslam"/>
+    <arg name="node_name" default="logger_node"/>
+
+    <!-- Subscription -->
+    <!--    none.   -->
+
+    <!-- Publication -->
+    <!--    none.   -->
+
+    <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" required="true" />
+</launch>

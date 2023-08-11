@@ -45,6 +45,9 @@ VERBOSE = True
 PROFILING = True
 ROS_TF_PUBLISHER = False
 
+# TODO: parse from environment variable
+LOG_DIR = None
+LOG_DIR = "LOG_FILE_DIR"
 
 def marker(frame_type: str) -> str:
     markers = {
@@ -135,6 +138,19 @@ if __name__ == '__main__':
 
     if PROFILING:
         T2Profiler.enabled(True)
+
+    if LOG_DIR is not None:
+        import threading
+
+        def my_function():
+            # Perform some computation / task here
+            print("Running in a separate thread...")
+
+        # Create a new thread and pass the function as the target
+        thread = threading.Thread(target=my_function)
+
+        # Start the thread
+        thread.start()
 
     # launch experiment manager
     manager.start("/autolab/tf", AutolabTransform)
