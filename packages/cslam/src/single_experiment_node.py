@@ -12,6 +12,8 @@ from geometry_msgs.msg import TransformStamped, Transform, Quaternion, Vector3
 import tf
 import networkx as nx
 import matplotlib
+#import lcm
+#from lcm import LCM
 
 from cslam_app.utils.T2Profiler import T2Profiler
 
@@ -47,7 +49,7 @@ ROS_TF_PUBLISHER = False
 
 # TODO: parse from environment variable
 LOG_DIR = None
-LOG_DIR = "LOG_FILE_DIR"
+#LOG_DIR = "/data/log"
 
 def marker(frame_type: str) -> str:
     markers = {
@@ -98,7 +100,23 @@ robot = matrix.robots.DB21M(matrix_vehicle_name, raw_pose=True)
 imgs = []
 def update_temp_renderer(experiment: OnlineLocalizationExperiment):
     temp_g = experiment.graph
+"""
+class MessageHandler:
+    def __init__(self):
+        self.m = LCM("udpm://239.255.76.67:7667?ttl=1")
 
+    def handle_message(self, channel, data):
+        # Publish the message here
+        self.m.publish(channel, data)
+
+def read_lcm_log(log_file):
+    handler = MessageHandler()  # Replace "CHANNEL_NAME" with the desired channel name
+    log = lcm.EventLog(log_file, "r")
+
+    for event in log:
+        print(event.channel)
+        handler.handle_message("/autolab/tf", event.data)
+"""
 
 
 def update_renderer(experiment: OnlineLocalizationExperiment):
@@ -138,20 +156,23 @@ if __name__ == '__main__':
 
     if PROFILING:
         T2Profiler.enabled(True)
-
+    """
     if LOG_DIR is not None:
         import threading
+        import time
 
         def my_function():
-            # Perform some computation / task here
-            print("Running in a separate thread...")
+            # Perform some computation / task here        
+            log_file = LOG_DIR  # Replace "path/to/your/log_file.lcm" with the actual path to your LCM log file
+            lcm.LCM()
+            read_lcm_log(log_file)
 
         # Create a new thread and pass the function as the target
         thread = threading.Thread(target=my_function)
 
         # Start the thread
         thread.start()
-
+    """
     # launch experiment manager
     manager.start("/autolab/tf", AutolabTransform)
 
