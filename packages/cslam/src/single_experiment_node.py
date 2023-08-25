@@ -85,14 +85,14 @@ def nodelist(g, prefix: str):
     return [n for n in g if n.lstrip('/').startswith(prefix)]
 
 
-matrix = Matrix(
-    #"localhost" #seems to only work when running computation locally, doesn't work when running on TTIClargeloop
-    "192.168.1.34", #CHANGE TO CORRECT IP
-    auto_commit=True
-)
-matrix_vehicle_name = "map_0/vehicle_0"
-world_vehicle_name = "myrobot"
-robot = matrix.robots.DB21M(matrix_vehicle_name, raw_pose=True)
+# matrix = Matrix(
+#     #"localhost" #seems to only work when running computation locally, doesn't work when running on TTIClargeloop
+#     "192.168.1.13", #CHANGE TO CORRECT IP
+#     auto_commit=True
+# )
+# matrix_vehicle_name = "map_0/vehicle_0"
+# world_vehicle_name = "myrobot"
+# robot = matrix.robots.DB21M(matrix_vehicle_name, raw_pose=True)
 
 
 #a temporary visualization of the online experiment that takes a picture each time it optimizes and combines into
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     manager.start("/autolab/tf", AutolabTransform)
 
     # create experiment
-    ONLINE = False
+    ONLINE = True
 
     if ONLINE:
         experiment = OnlineLocalizationExperiment(
@@ -186,7 +186,7 @@ if __name__ == '__main__':
             precision_ms=PRECISION_MSECS,
             verbose=VERBOSE
         )
-        experiment.on_post_optimize(partial(update_renderer, experiment))
+        #experiment.on_post_optimize(partial(update_renderer, experiment))
     else:
         experiment = TimedLocalizationExperiment(
             manager,
