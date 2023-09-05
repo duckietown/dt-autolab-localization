@@ -47,6 +47,9 @@ dts devel run -f -M -X -L my_launcher
 
 ## Replay saved log file
 
+The log files are stored in the `assets/logs` directory and have extension `.lcmlog`.
+To replay a saved log file you need to:
+
 1. Launch replayer container:
 
     `dts devel run -f -M --name logreplayer -c bash`
