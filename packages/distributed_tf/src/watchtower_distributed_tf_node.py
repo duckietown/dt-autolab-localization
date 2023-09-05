@@ -95,9 +95,7 @@ class DistributedTFNode(DTROS):
                 is_fixed=False,
                 is_static=is_static,
                 transform=detection.transform,
-                variance=(1/810) * np.sqrt((detection.center[0] - 648)**2 + (detection.center[1] - 486)**2)
-                #added variance to be a number from 0-1 based on the location of the april tag in the image
-                #further away from the center of the image = higher variance
+                variance=detection.pose_error
             )
             # publish
             self._tf_pub.publish(tf, destination=self.map_name)
