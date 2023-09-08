@@ -4,6 +4,7 @@ import time
 from collections import defaultdict
 from functools import partial
 from typing import List, Tuple
+from cslam.include.cslam import TFGraph
 
 import rospy
 import tf2_ros
@@ -17,9 +18,9 @@ import matplotlib
 
 from cslam_app.utils.T2Profiler import T2Profiler
 
-#matplotlib.use('GTK3Agg')
-#matplotlib.use('TkAgg')
-matplotlib.use('Agg')
+# matplotlib.use('GTK3Agg')
+# matplotlib.use('TkAgg')
+# matplotlib.use('Agg')
 #only agg works when running on TTIClargeloop (something to do with headless terminal)
 
 import matplotlib.pyplot as plt
@@ -34,6 +35,7 @@ from dt_duckiematrix_protocols import Matrix
 
 # constants
 MAP_NAME = "TTIC_large_loop"
+DUCKIEBOT_NAME = "bwstod"
 EXPERIMENT_DURATION = 12
 PRECISION_MSECS = 100
 TRACKABLES = [
@@ -46,10 +48,6 @@ MAP_HEIGHT = TILE_SIZE * 5
 VERBOSE = True
 PROFILING = True
 ROS_TF_PUBLISHER = False
-
-# TODO: parse from environment variable
-LOG_DIR = None
-#LOG_DIR = "/data/log"
 
 def marker(frame_type: str) -> str:
     markers = {
@@ -81,7 +79,7 @@ def color(frame_type: str) -> str:
     return "green"
 
 
-def nodelist(g, prefix: str):
+def nodelist(g:TFGraph, prefix: str):
     return [n for n in g if n.lstrip('/').startswith(prefix)]
 
 
@@ -177,7 +175,7 @@ if __name__ == '__main__':
     manager.start("/autolab/tf", AutolabTransform)
 
     # create experiment
-    ONLINE = True
+    ONLINE = False
 
     if ONLINE:
         experiment = OnlineLocalizationExperiment(
@@ -284,17 +282,12 @@ if __name__ == '__main__':
     # pos = {n: p - [min_time, 0] for n, p in pos.items()}
     # <== This block places the nodes according to time
 
-    #print("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
-
     if not ONLINE: #CHANGE BACK
         # draw map
         png_filename = f"{MAP_NAME}.png"
         png_filepath = os.path.join(os.environ.get("DT_REPO_PATH"), "assets", "maps", png_filename)
         map_png = pimage.imread(png_filepath)
         
-        
-        #print("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC")
-
         plt.imshow(
             map_png,
             origin='upper',
@@ -302,9 +295,7 @@ if __name__ == '__main__':
         )
         #overlays the png of the map under the graph
         
-        #print("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD")
-
-        for entity in ["world", "watchtower", "myrobot", "autobot", "tag/3"]:
+        for entity in ["world", "watchtower", "myrobot", "autobot", "tag/3", DUCKIEBOT_NAME]:
             nx.draw_networkx_nodes(
                 G,
                 pos,
@@ -314,8 +305,6 @@ if __name__ == '__main__':
                 node_size=150
             )
 
-        #print("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-
         edges = set()
         for edge in G.edges:
             edges.add((edge[0], edge[1]))
@@ -323,17 +312,12 @@ if __name__ == '__main__':
         #TODO: figure out why duckiebot shows up as an edge in the image (if you change edge color the spot
         #representing the duckiebot changes to the same color)
 
-        #print("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
-
         plt.xlim(0, MAP_WIDTH)
         plt.ylim(0, MAP_HEIGHT)
         plt.subplots_adjust(left=0, bottom=0, right=0.99, top=0.99)
 
-        #plt.show()
+        plt.show()
 
-        #print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-        
-        plt.savefig('/data/temp.png')
         #because the computation is running on a headless device, cannot show image but have to save it instead
         #to access the saved image run "scp duckie@TTIClargeloop.local:/data/temp.png ./" in terminal
 
