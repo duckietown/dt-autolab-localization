@@ -97,7 +97,8 @@ class DistributedTFNode(DTROS):
                     ),
                     is_fixed=True,
                     is_static=False,
-                    transform=transform.transform
+                    transform=transform.transform,
+                    variance=0.0 # Variance is 0 as this is a rigid transform
                 )
                 # add TF to the list of TFs to publish
                 self._static_tfs_sem.acquire()
@@ -190,7 +191,9 @@ class DistributedTFNode(DTROS):
             ),
             is_fixed=False,
             is_static=False,
-            transform=transform
+            transform=transform,
+            # TODO: #7 add variance value to odometry
+            variance=0.0
         )
         # publish
         self._tf_pub.publish(tf, destination=self.map_name)
