@@ -52,7 +52,6 @@ class TFGraph(OrderedMultiDiGraph):
             raise ValueError("Edge attribute `measurement` must be of type `TF`.")
         # ---
         with self._lock:
-            #print(f'Adding edge "({u}, {v})" w/ {attr}') #PRINT
             super(TFGraph, self).add_edge(u, v, **attr)
 
     def add_nodes_from(self, nodes_for_adding, **attr):
@@ -134,7 +133,6 @@ class TFGraph(OrderedMultiDiGraph):
                     # get edge measurement and other attributes
                     measurement = edata["measurement"]
                     # add edge
-                    #print(f"INFORMATION DATA: \n {edata['information']}")
                     optimizer.add_edge([iu, iv], g2o.Isometry3d(measurement.T), edata["information"])
 
         # optimize
