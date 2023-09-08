@@ -28,7 +28,7 @@ FIXED_FRAMES = [
 
 class LocalizationExperiment(ExperimentAbs):
 
-    def __init__(self, manager: ExperimentsManagerAbs, duration: int, trackables: List[int],
+    def __init__(self, manager: ExperimentsManagerAbs, duration: int, trackables: List[int], enable_info_mat = False,
                  **kwargs):
         super().__init__(manager, duration)
         # check params
@@ -44,6 +44,8 @@ class LocalizationExperiment(ExperimentAbs):
         self._lock = Semaphore(1)
         self._num_nodes_since_update = 0
         self._update_every = 1
+        # Enable information matrix
+        self.enable_info_mat = enable_info_mat
 
     @property
     def precision_ms(self) -> int:
@@ -64,6 +66,11 @@ class LocalizationExperiment(ExperimentAbs):
             self._lock.release()
 
     def __callback__(self, msg, _):
+        if msg.variance == 0:
+            information_value = INFTY
+        else:
+            information_value = 1/msg.variance
+
         self._lock.acquire()
         # ---
         tf = Transform_to_TF(msg.transform)
@@ -137,9 +144,12 @@ class LocalizationExperiment(ExperimentAbs):
 
             # add observations
             origin_time_secs = msg.origin.time.to_sec()
-            self._graph.add_measurement(msg.origin.name, msg.target.name, origin_time_secs, tf,
+            self._graph.add_measurement(msg.origin.name,
+                                        msg.target.name,
+                                        origin_time_secs,
+                                        tf,
+                                        information=np.eye(6)*information_value if self.enable_info_mat else np.eye(6),
                                         **self._edge_attrs(msg))
-
         # measurement type 3: a dynamic TF (either observed or not)
         #     examples: watchtower observing a duckiebot tag,
         #               static tf between duckiebot's footprint and tag,
@@ -184,10 +194,6 @@ class LocalizationExperiment(ExperimentAbs):
 
                 # Replace the time in target_node_name with that of the
                 # Duckiebot deadreckon node nearest in time
-                #print(msg.variance)
-                info_mat = np.eye(6)
-                #info_mat = info_mat * msg.variance
-                #added info matrix that is equal to an identity matrix * variance of the detection
 
                 target_time = int(target_time_ms // self._precision_ms)
                 closest, msec = self._graph.get_nearest_node_in_time(
@@ -209,16 +215,18 @@ class LocalizationExperiment(ExperimentAbs):
                                              **self._node_attrs(msg.target))
                     else:
                         self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
-
-                self._graph.add_measurement(origin_node_name, target_node_name, origin_time_secs,
-                                            tf, information=info_mat, **self._edge_attrs(msg))
+                self._graph.add_measurement(
+                    origin_node_name,
+                    target_node_name,
+                    origin_time_secs,
+                    tf,
+                    information=np.eye(6)*information_value if self.enable_info_mat else np.eye(6),
+                    **self._edge_attrs(msg)
+                    )
             else:
                 self._graph.nodes[origin_node_name]['__tfs__'][
                     (msg.origin.name, msg.target.name)].append(msg)
                 # TODO: this should be inside the message
-                odom_info_mat = np.eye(6)
-                odom_info_mat[3, 3] = INFTY
-                odom_info_mat[4, 4] = INFTY
 
                 # node names are timed, within the same time "bucket" we are collecting the TFs,
                 # though robots move within a bucket,
@@ -239,7 +247,6 @@ class LocalizationExperiment(ExperimentAbs):
                     if not self._graph.has_node(target_node_name):
                         tf_origin = self._graph.get_pose(origin_node_name)
 
-                        print(f"{origin_node_name} -> {target_node_name}: {TF.from_T(T).t}")
 
                         if tf_origin:
                             T_target = np.dot(tf_origin.T, T)
@@ -251,7 +258,7 @@ class LocalizationExperiment(ExperimentAbs):
 
                     self._graph.add_measurement(origin_node_name, target_node_name,
                                                 origin_time_secs, TF.from_T(T),
-                                                information=odom_info_mat,
+                                                information=np.eye(6)*information_value if self.enable_info_mat else np.eye(6),
                                                 **self._edge_attrs(msg))
         # ---
         self._lock.release()
@@ -373,9 +380,9 @@ class LocalizationExperiment(ExperimentAbs):
             if not self._graph.has_node(nname):
                 self._graph.add_node(nname, **ndata)
         # add new edges
-        for (origin, target), tf in new_edges.items():
+        for (origin, target), tf, in new_edges.items():
             if not self._graph.has_edge(origin, target):
-                self._graph.add_measurement(origin, target, 0.0, tf, information=np.eye(6))  # * INFTY)
+                self._graph.add_measurement(origin, target, 0.0, tf, information=np.eye(6))
         # ---
         if lock:
             self._lock.release()
