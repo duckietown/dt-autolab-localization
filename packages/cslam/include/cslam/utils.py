@@ -1,4 +1,5 @@
 import dataclasses
+import json
 from typing import Optional
 
 import numpy as np
@@ -9,27 +10,61 @@ from tf import transformations as tr
 INFTY = 9999999
 
 
-@dataclasses.dataclass
 class TF:
-    t: np.ndarray = np.array([0, 0, 0])
-    q: np.ndarray = np.array([0, 0, 0, 1])
+    _t: np.ndarray
+    _q: np.ndarray
     _T: Optional[np.ndarray] = None
     time_ms: int = -1
 
-    def __post_init__(self):
-        if self._T is None:
-            self._T = tr.compose_matrix(
-                translate=self.t,
-                angles=tr.euler_from_quaternion(self.q)
-            )
+    def __init__(self, t: Optional[np.ndarray] = None, q: Optional[np.ndarray] = None,
+                 _T: Optional[np.ndarray] = None, time_ms: int = -1):
+        self._t = t if t is not None else np.array([0, 0, 0])
+        self._q = q if q is not None else np.array([0, 0, 0, 1])
+        self._T = _T if _T is not None else tr.compose_matrix(
+            translate=self.t,
+            angles=tr.euler_from_quaternion(self.q)
+        )
+        self.time_ms = time_ms
 
     def Q(self, order='xyzw'):
         idx = ['xyzw'.index(a) for a in order]
         return np.array([self.q[i] for i in idx])
 
     @property
+    def t(self):
+        return self._t
+
+    @property
+    def q(self):
+        return self._q
+
+    @property
     def T(self):
         return self._T
+
+    @t.setter
+    def t(self, value: np.ndarray):
+        self._t = value
+        self._T = tr.compose_matrix(
+            translate=value,
+            angles=tr.euler_from_quaternion(self.q)
+        )
+
+    @q.setter
+    def q(self, value: np.ndarray):
+        self._q = value
+        self._T = tr.compose_matrix(
+            translate=self._t,
+            angles=tr.euler_from_quaternion(value)
+        )
+
+    def __str__(self):
+        return str({
+            "t": self._t,
+            "q": self._q,
+            "_T": self._T,
+            "time_ms": self.time_ms
+        })
 
     @staticmethod
     def from_T(T: np.ndarray) -> 'TF':

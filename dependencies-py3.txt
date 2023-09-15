@@ -9,3 +9,7 @@
 # matplotlib GTK backend
 PyGObject
 pycairo>=1.11.0
+
+# these are the public protocols
+dt-duckiematrix-protocols-ente>=0.1.0
+duckietown-world-daffy

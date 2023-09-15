@@ -44,3 +44,26 @@ say `launchers/my_launcher.sh`, you can then run it with
 ```shell script
 dts devel run -f -M -X -L my_launcher
 ```
+
+## Replay saved log file
+
+The log files are stored in the `assets/logs` directory and have extension `.lcmlog`.
+To replay a saved log file you need to:
+
+1. Launch replayer container:
+
+    `dts devel run -f -M --name logreplayer -c bash`
+
+1. Inside the container set the correct LCM url:
+
+    `export LCM_DEFAULT_URL=udpm://239.255.4.196:7667?ttl=1`
+
+1. Replay the log:
+
+    `lcm-logplayer log`
+
+## Launch the online localization
+
+Execute
+
+    dts devel run -L single-experiment -- --hostname TTIClargeloop

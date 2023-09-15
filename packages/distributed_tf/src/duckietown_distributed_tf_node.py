@@ -129,8 +129,9 @@ class DistributedTFNode(DTROS):
                     is_static=False,
                     transform=Transform(
                         translation=Vector3(x=position[0], y=position[1], z=0),
-                        rotation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
-                    )
+                        rotation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3]),
+                    ),
+                    variance=0.0,
                 )
                 # add tf
                 tfs.append(tf)

@@ -1,6 +1,6 @@
 from collections import defaultdict
 from threading import Semaphore
-from typing import List, Dict
+from typing import List, Dict, Iterator, Tuple
 import numpy as np
 
 from autolab_msgs.msg import AutolabReferenceFrame, AutolabTransform
@@ -28,7 +28,7 @@ FIXED_FRAMES = [
 
 class LocalizationExperiment(ExperimentAbs):
 
-    def __init__(self, manager: ExperimentsManagerAbs, duration: int, trackables: List[int],
+    def __init__(self, manager: ExperimentsManagerAbs, duration: int, trackables: List[int], enable_info_mat = False,
                  **kwargs):
         super().__init__(manager, duration)
         # check params
@@ -44,6 +44,8 @@ class LocalizationExperiment(ExperimentAbs):
         self._lock = Semaphore(1)
         self._num_nodes_since_update = 0
         self._update_every = 1
+        # Enable information matrix
+        self.enable_info_mat = enable_info_mat
 
     @property
     def precision_ms(self) -> int:
@@ -53,7 +55,22 @@ class LocalizationExperiment(ExperimentAbs):
     def graph(self) -> TFGraph:
         return self._graph
 
+    def nodes(self, lock: bool = True) -> Iterator[Tuple[str, dict]]:
+        if lock:
+            self._lock.acquire()
+        # ---
+        for nname, ndata in self._graph.nodes.data():
+            yield nname, ndata
+        # ---
+        if lock:
+            self._lock.release()
+
     def __callback__(self, msg, _):
+        if msg.variance == 0:
+            information_value = INFTY
+        else:
+            information_value = 1/msg.variance
+
         self._lock.acquire()
         # ---
         tf = Transform_to_TF(msg.transform)
@@ -127,9 +144,12 @@ class LocalizationExperiment(ExperimentAbs):
 
             # add observations
             origin_time_secs = msg.origin.time.to_sec()
-            self._graph.add_measurement(msg.origin.name, msg.target.name, origin_time_secs, tf,
+            self._graph.add_measurement(msg.origin.name,
+                                        msg.target.name,
+                                        origin_time_secs,
+                                        tf,
+                                        information=np.eye(6)*information_value if self.enable_info_mat else np.eye(6),
                                         **self._edge_attrs(msg))
-
         # measurement type 3: a dynamic TF (either observed or not)
         #     examples: watchtower observing a duckiebot tag,
         #               static tf between duckiebot's footprint and tag,
@@ -174,8 +194,11 @@ class LocalizationExperiment(ExperimentAbs):
 
                 # Replace the time in target_node_name with that of the
                 # Duckiebot deadreckon node nearest in time
+
                 target_time = int(target_time_ms // self._precision_ms)
-                closest, msec = self.graph.get_nearest_node_in_time (target_time, AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT, self._precision_ms)
+                closest, msec = self._graph.get_nearest_node_in_time(
+                    target_time, AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
+                    self._precision_ms)
                 if closest:
                     a = target_node_name.split('/')
                     target_node_name = a[0] + '/' + a[1] + '/' + str(msec)
@@ -192,16 +215,23 @@ class LocalizationExperiment(ExperimentAbs):
                                              **self._node_attrs(msg.target))
                     else:
                         self._graph.add_node(target_node_name, **self._node_attrs(msg.target))
-
-                self._graph.add_measurement(origin_node_name, target_node_name, origin_time_secs,
-                                            tf, **self._edge_attrs(msg))
+                self._graph.add_measurement(
+                    origin_node_name,
+                    target_node_name,
+                    origin_time_secs,
+                    tf,
+                    information=np.eye(6)*information_value if self.enable_info_mat else np.eye(6),
+                    **self._edge_attrs(msg)
+                    )
             else:
                 self._graph.nodes[origin_node_name]['__tfs__'][
                     (msg.origin.name, msg.target.name)].append(msg)
                 # TODO: this should be inside the message
-                odom_info_mat = np.eye(6)
-                odom_info_mat[3, 3] = INFTY
-                odom_info_mat[4, 4] = INFTY
+
+                # node names are timed, within the same time "bucket" we are collecting the TFs,
+                # though robots move within a bucket,
+                # when the bucket is "closed", TFs from the same bucket are chained
+
                 # sequence of observations from and to movable frames
                 if origin_node_name != target_node_name:
                     # get list of observations to combine
@@ -216,6 +246,8 @@ class LocalizationExperiment(ExperimentAbs):
                     # Add target_node_name node if it doesn't exist
                     if not self._graph.has_node(target_node_name):
                         tf_origin = self._graph.get_pose(origin_node_name)
+
+
                         if tf_origin:
                             T_target = np.dot(tf_origin.T, T)
                             tf_target = TF.from_T(T_target)
@@ -226,7 +258,7 @@ class LocalizationExperiment(ExperimentAbs):
 
                     self._graph.add_measurement(origin_node_name, target_node_name,
                                                 origin_time_secs, TF.from_T(T),
-                                                information=odom_info_mat,
+                                                information=np.eye(6)*information_value if self.enable_info_mat else np.eye(6),
                                                 **self._edge_attrs(msg))
         # ---
         self._lock.release()
@@ -246,13 +278,16 @@ class LocalizationExperiment(ExperimentAbs):
         if lock:
             self._lock.acquire()
         # ---
-        self._extend_graph()
+        self._extend_graph(lock=False)
         self._graph.optimize()
         # ---
         if lock:
             self._lock.release()
 
-    def trajectory(self, node: str) -> List[Dict[str, List]]:
+    def trajectory(self, node: str, lock: bool = True) -> List[Dict[str, List]]:
+        # if lock:
+        #     self._lock.acquire()
+        # ---
         # collect all timed nodes corresponding to the node to track
         traj = []
         for nname, ndata in self._graph.nodes(data=True):
@@ -281,13 +316,19 @@ class LocalizationExperiment(ExperimentAbs):
         strategy = lambda tf: tf['timestamp']
         traj = sorted(traj, key=strategy)
         # ---
+        # if lock:
+        #     self._lock.release()
+        # ---
         return traj
 
-    def _extend_graph(self):
+    def _extend_graph(self, lock: bool):
+        if lock:
+            self._lock.acquire()
+        # ---
         # append fixed TFs to non-trackable leaf nodes
         untrackable_leaf_nodes = [
-            (nname, ndata) for nname, ndata in self.graph.nodes(data=True)
-            if self.graph.out_degree(nname) == 0 and
+            (nname, ndata) for nname, ndata in self._graph.nodes(data=True)
+            if self._graph.out_degree(nname) == 0 and
                ndata['type'] not in self._trackables
         ]
         # store new nodes/edges
@@ -339,9 +380,12 @@ class LocalizationExperiment(ExperimentAbs):
             if not self._graph.has_node(nname):
                 self._graph.add_node(nname, **ndata)
         # add new edges
-        for (origin, target), tf in new_edges.items():
+        for (origin, target), tf, in new_edges.items():
             if not self._graph.has_edge(origin, target):
-                self._graph.add_measurement(origin, target, 0.0, tf, information=np.eye(6))  # * INFTY)
+                self._graph.add_measurement(origin, target, 0.0, tf, information=np.eye(6))
+        # ---
+        if lock:
+            self._lock.release()
 
     @staticmethod
     def _node_attrs(rframe: AutolabReferenceFrame) -> dict:
