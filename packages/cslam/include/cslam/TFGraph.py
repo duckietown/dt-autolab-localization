@@ -11,10 +11,11 @@ import numpy as np
 
 class TFGraph(OrderedMultiDiGraph):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, verbose : bool = False,  *args, **kwargs):
         super(TFGraph, self).__init__(*args, **kwargs)
         # create lock
         self._lock = Semaphore(1)
+        self.verbose = verbose
 
     def add_node(self, name, **attr):
         if "pose" in attr and not isinstance(attr["pose"], TF):
@@ -81,7 +82,6 @@ class TFGraph(OrderedMultiDiGraph):
 
     def get_pose(self, name):
         if name not in self:
-            #print("name not in graph") #TEMP
             return None
         if 'pose' not in self.nodes[name]:
             return None
@@ -117,10 +117,11 @@ class TFGraph(OrderedMultiDiGraph):
                     # get node pose and other attributes
                     pose = g2o.Isometry3d(g2o.Quaternion(ndata["pose"].Q('wxyz')), ndata["pose"].t) \
                         if "pose" in ndata else None
-                    if "pose" in ndata:
-                        print(f"ADDING POSE FOR: {nname}\t {ndata['pose'].t}")
-                    else:
-                        print(f"NO POSE FOR: {nname}")
+                    if self.verbose:
+                        if "pose" in ndata:
+                            print(f"ADDING POSE FOR: {nname}\t {ndata['pose'].t}")
+                        else:
+                            print(f"NO POSE FOR: {nname}")
                     fixed = ndata["fixed"] if "fixed" in ndata else False
                     # add vertex
                     optimizer.add_vertex(node_id, pose=pose, fixed=fixed)

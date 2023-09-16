@@ -31,6 +31,7 @@ class LocalizationExperiment(ExperimentAbs):
     def __init__(self, manager: ExperimentsManagerAbs, duration: int, trackables: List[int], enable_info_mat = False,
                  **kwargs):
         super().__init__(manager, duration)
+        verbose = kwargs['verbose'] if 'verbose' in kwargs else False
         # check params
         if 'precision_ms' not in kwargs:
             raise KeyError("Parameter `precision_ms` is mandatory.")
@@ -40,7 +41,7 @@ class LocalizationExperiment(ExperimentAbs):
         # store fixed TFs
         self._fixed_tfs = {}
         # create graph
-        self._graph = TFGraph()
+        self._graph = TFGraph(verbose)
         self._lock = Semaphore(1)
         self._num_nodes_since_update = 0
         self._update_every = 1
