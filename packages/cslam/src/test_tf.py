@@ -34,6 +34,7 @@ def cb(msg, _):
     # br.sendTransform(t)
 
     # print sorted edges
+    # TODO: DTSW-3928 fix this crashing when list of transforms is too long
     for i, e in enumerate(sorted(shelf)):
         # pad some space to clear potentially longer previous outputs
         stdscr.addstr(i, 0, str(e) + ' ' * 40)  

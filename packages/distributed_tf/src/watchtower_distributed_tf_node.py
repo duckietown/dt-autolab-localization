@@ -66,10 +66,6 @@ class DistributedTFNode(DTROS):
 
     def _cb_atag(self, msg):
     
-    # compute variance using msg.center[0] (x value in img frame) and msg.center[1] (y value in img frame)
-    # height = 972 width = 1296     (center "0,0": 648, 486)
-    # msg.pose_error could also be used
-    
         for detection in msg.detections:
             if detection.tag_id not in self._tags:
                 continue
