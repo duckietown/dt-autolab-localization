@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from collections import defaultdict
 from threading import Semaphore
 from typing import List, Dict, Iterator, Tuple
@@ -261,6 +262,8 @@ class LocalizationExperiment(ExperimentAbs):
                                                 origin_time_secs, TF.from_T(T),
                                                 information=np.eye(6)*information_value if self.enable_info_mat else np.eye(6),
                                                 **self._edge_attrs(msg))
+            if msg.origin.type is AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT and msg.target.type is AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT:
+                self._odometry_callback(msg)
         # ---
         self._lock.release()
 
@@ -387,6 +390,10 @@ class LocalizationExperiment(ExperimentAbs):
         # ---
         if lock:
             self._lock.release()
+
+    @abstractmethod
+    def _odometry_callback(self, msg):
+        pass
 
     @staticmethod
     def _node_attrs(rframe: AutolabReferenceFrame) -> dict:
