@@ -11,6 +11,23 @@ INFTY = 9999999
 
 
 class TF:
+    """This class represents a transformation in 3D space.
+
+    Attributes:
+        _t (np.ndarray): _description_
+        _q (np.ndarray): _description_
+        _T (np.ndarray): _description_
+        time_ms (int): _description_
+
+    Args:
+        t (Optional[np.ndarray], optional): _description_. Defaults to None.
+        q (Optional[np.ndarray], optional): _description_. Defaults to None.
+        _T (Optional[np.ndarray], optional): _description_. Defaults to None.
+        time_ms (int, optional): _description_. Defaults to -1.
+
+    Returns:
+        _type_: _description_
+    """
     _t: np.ndarray
     _q: np.ndarray
     _T: Optional[np.ndarray] = None
@@ -99,6 +116,15 @@ def create_info_matrix(stdd_position, stdd_orientation, constraints=None):
 
 
 def Transform_to_TF(msg: Transform):
+    """This function converts a Transform message to a TF object that can be used for operations.
+
+    Args:
+        msg (Transform): message containig the transform
+
+    Returns:
+        TF: the corresponding TF object
+    """
+
     t = msg.translation
     q = msg.rotation
     return TF(

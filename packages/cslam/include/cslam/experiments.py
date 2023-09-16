@@ -152,6 +152,12 @@ class ExperimentAbs(abc.ABC):
 
     @abc.abstractmethod
     def __callback__(self, msg, header):
+        """The __callback__ method is called every time a new message is received.
+
+        Args:
+            msg (_type_): lcm message received by the DTCommunicationGroup  (see `dt_communication_utils`).
+            header (_type_): _description_
+        """
         pass
 
     @abc.abstractmethod
