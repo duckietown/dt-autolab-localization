@@ -45,8 +45,8 @@ TILE_SIZE = 0.595
 MAP_WIDTH = TILE_SIZE * 4
 MAP_HEIGHT = TILE_SIZE * 5
 
-VERBOSE = True
-PROFILING = True
+VERBOSE = False
+PROFILING = False
 ROS_TF_PUBLISHER = False
 
 def marker(frame_type: str) -> str:
@@ -175,7 +175,7 @@ if __name__ == '__main__':
     manager.start("/autolab/tf", AutolabTransform)
 
     # create experiment
-    ONLINE = False
+    ONLINE = True
 
     if ONLINE:
         experiment = OnlineLocalizationExperiment(
