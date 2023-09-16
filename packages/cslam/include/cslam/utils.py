@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 
-from geometry_msgs.msg import Transform, TransformStamped
+from geometry_msgs.msg import Transform, TransformStamped, Vector3, Quaternion
 from tf import transformations as tr
 
 INFTY = 9999999
@@ -91,7 +91,21 @@ class TF:
             q=tr.quaternion_from_euler(*angles),
             _T=T
         )
+    
+    def __mul__(self, other: 'TF') -> 'TF':
+        """Implement left multiplication of two TF objects T_b->c * T_a->b = T_a->c
 
+        Notation source: http://jamessjackson.com/lie_algebra_tutorial/04-transformations/
+
+        Args:
+            other (TF): T_a->b
+
+        Returns:
+            TF: T_a->c
+        """
+        return TF.from_T(np.dot(self.T,other.T))
+
+IDENTITY_TF = TF([0, 0, 0], [0, 0, 0, 1])
 
 @dataclasses.dataclass
 class TFMeasurement:
@@ -132,8 +146,52 @@ def Transform_to_TF(msg: Transform):
         q=np.array([q.x, q.y, q.z, q.w])
     )
 
+def TF_to_Transform(msg: TF):
+    t = msg.t
+    q = msg.q
+    return Transform(
+        translation=Vector3(x=t[0], y=t[1], z=t[2]),
+        rotation=Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+    )
 
 def TransformStamped_to_TF(msg: TransformStamped, stamp: bool = True):
     tf = Transform_to_TF(msg.transform)
     tf.time_ms = -1 if not stamp else int(msg.header.stamp.to_sec() * 1000)
     return tf
+
+if __name__ == '__main__':
+    print("Testing TF class")
+    # Translation along x-axis
+    translation_x = 1.0  # 1 meter
+
+    # Rotation angle around z-axis (90 degrees)
+    rotation_angle_z = np.deg2rad(90)  # Convert degrees to radians
+
+    # Create a 3x3 rotation matrix for the rotation around z-axis
+    rotation_matrix_z = np.array([
+        [np.cos(rotation_angle_z), -np.sin(rotation_angle_z), 0],
+        [np.sin(rotation_angle_z), np.cos(rotation_angle_z), 0],
+        [0, 0, 1]
+    ])
+
+    # Create a 4x4 transformation matrix T_a->b
+    T_a_to_b = np.eye(4)
+    T_a_to_b[:3, :3] = rotation_matrix_z
+    T_a_to_b[:3, 3] = [translation_x, 0, 0]
+    
+    T_b_to_a = np.linalg.inv(T_a_to_b)
+
+    # Transform T_a_to_b to a quaternion and translation vector
+    q_a_to_b = tr.quaternion_from_matrix(T_a_to_b)
+    t_a_to_b = T_a_to_b[:3, 3]
+
+    # Transform T_b_to_a to a quaternion and translation vector
+    q_b_to_a = tr.quaternion_from_matrix(T_b_to_a)
+    t_b_to_a = T_b_to_a[:3, 3]
+
+    # Create a TF object from the quaternion and translation vector for both transformations
+    tf_b_to_a = TF(t=t_b_to_a, q=q_b_to_a)
+    tf_a_to_b = TF(t=t_a_to_b, q=q_a_to_b)
+    
+    assert ((tf_b_to_a*tf_a_to_b).T == T_b_to_a@T_a_to_b).all()
+    print("TF class works correctly")
