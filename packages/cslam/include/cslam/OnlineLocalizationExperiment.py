@@ -3,6 +3,10 @@ from collections import defaultdict
 from threading import Semaphore, Thread
 from typing import List, Callable, Dict, Set
 
+import rospy
+
+import numpy as np
+
 from autolab_msgs.msg import AutolabReferenceFrame, AutolabTransform
 
 from cslam_app.utils.T2Profiler import T2Profiler
@@ -137,23 +141,25 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
                 last_publish_time = time.time()
                 # Get the name of the duckiebots sending the odometry
                 duckiebot_names = self._get_duckiebot_names(self._graph.nodes)
-                
                 for duckiebot_name in duckiebot_names:
                     if verbose:
                         print(f"Sending GPS for duckiebot {duckiebot_name}")
                     # Retrieve the latest optimized duckiebot pose
                     unoptimized_global_TF = self._get_latest_global_odometry_TF(self._graph.nodes, duckiebot_name)
 
-                    # Get the time of the odometry message        
+                    # Obtain time in the appropriat format for the gps_msg
+                    header_time = rospy.Time.from_sec(time.time())
+
+                    # Get the time of the odometry message       
                     gps_msg : AutolabTransform = AutolabTransform(
                         origin=AutolabReferenceFrame(
-                            time=unoptimized_global_TF['time'],
+                            time=header_time,
                             type=AutolabReferenceFrame.TYPE_MAP_ORIGIN,
                             name="map",
                             robot=duckiebot_name
                         ),
                         target=AutolabReferenceFrame(
-                            time=unoptimized_global_TF['time'],
+                            time=header_time,
                             type=AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT,
                             name=duckiebot_name+'/gps',
                             robot=duckiebot_name
