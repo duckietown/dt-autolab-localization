@@ -4,6 +4,7 @@ import time
 from collections import defaultdict
 from functools import partial
 from typing import List, Tuple
+from cslam.include.cslam import TFGraph
 
 import rospy
 import tf2_ros
@@ -12,10 +13,15 @@ from geometry_msgs.msg import TransformStamped, Transform, Quaternion, Vector3
 import tf
 import networkx as nx
 import matplotlib
+#import lcm
+#from lcm import LCM
 
 from cslam_app.utils.T2Profiler import T2Profiler
 
-matplotlib.use('GTK3Agg')
+# matplotlib.use('GTK3Agg')
+# matplotlib.use('TkAgg')
+# matplotlib.use('Agg')
+#only agg works when running on TTIClargeloop (something to do with headless terminal)
 
 import matplotlib.pyplot as plt
 import matplotlib.image as pimage
@@ -29,7 +35,8 @@ from dt_duckiematrix_protocols import Matrix
 
 # constants
 MAP_NAME = "TTIC_large_loop"
-EXPERIMENT_DURATION = 22
+DUCKIEBOT_NAME = "bwstod"
+EXPERIMENT_DURATION = 12
 PRECISION_MSECS = 100
 TRACKABLES = [
     AutolabReferenceFrame.TYPE_DUCKIEBOT_FOOTPRINT
@@ -38,10 +45,9 @@ TILE_SIZE = 0.595
 MAP_WIDTH = TILE_SIZE * 4
 MAP_HEIGHT = TILE_SIZE * 5
 
-VERBOSE = True
-PROFILING = True
+VERBOSE = False
+PROFILING = False
 ROS_TF_PUBLISHER = False
-
 
 def marker(frame_type: str) -> str:
     markers = {
@@ -73,17 +79,42 @@ def color(frame_type: str) -> str:
     return "green"
 
 
-def nodelist(g, prefix: str):
+def nodelist(g:TFGraph, prefix: str):
     return [n for n in g if n.lstrip('/').startswith(prefix)]
 
 
-matrix = Matrix(
-    "localhost",
-    auto_commit=True
-)
-matrix_vehicle_name = "map_0/vehicle_0"
-world_vehicle_name = "myrobot"
-robot = matrix.robots.DB21M(matrix_vehicle_name, raw_pose=True)
+# matrix = Matrix(
+#     #"localhost" #seems to only work when running computation locally, doesn't work when running on TTIClargeloop
+#     "192.168.1.13", #CHANGE TO CORRECT IP
+#     auto_commit=True
+# )
+# matrix_vehicle_name = "map_0/vehicle_0"
+# world_vehicle_name = "myrobot"
+# robot = matrix.robots.DB21M(matrix_vehicle_name, raw_pose=True)
+
+
+#a temporary visualization of the online experiment that takes a picture each time it optimizes and combines into
+#an animation/video
+imgs = []
+def update_temp_renderer(experiment: OnlineLocalizationExperiment):
+    temp_g = experiment.graph
+"""
+class MessageHandler:
+    def __init__(self):
+        self.m = LCM("udpm://239.255.76.67:7667?ttl=1")
+
+    def handle_message(self, channel, data):
+        # Publish the message here
+        self.m.publish(channel, data)
+
+def read_lcm_log(log_file):
+    handler = MessageHandler()  # Replace "CHANNEL_NAME" with the desired channel name
+    log = lcm.EventLog(log_file, "r")
+
+    for event in log:
+        print(event.channel)
+        handler.handle_message("/autolab/tf", event.data)
+"""
 
 
 def update_renderer(experiment: OnlineLocalizationExperiment):
@@ -123,7 +154,23 @@ if __name__ == '__main__':
 
     if PROFILING:
         T2Profiler.enabled(True)
+    """
+    if LOG_DIR is not None:
+        import threading
+        import time
 
+        def my_function():
+            # Perform some computation / task here        
+            log_file = LOG_DIR  # Replace "path/to/your/log_file.lcm" with the actual path to your LCM log file
+            lcm.LCM()
+            read_lcm_log(log_file)
+
+        # Create a new thread and pass the function as the target
+        thread = threading.Thread(target=my_function)
+
+        # Start the thread
+        thread.start()
+    """
     # launch experiment manager
     manager.start("/autolab/tf", AutolabTransform)
 
@@ -137,7 +184,7 @@ if __name__ == '__main__':
             precision_ms=PRECISION_MSECS,
             verbose=VERBOSE
         )
-        experiment.on_post_optimize(partial(update_renderer, experiment))
+        #experiment.on_post_optimize(partial(update_renderer, experiment))
     else:
         experiment = TimedLocalizationExperiment(
             manager,
@@ -235,18 +282,20 @@ if __name__ == '__main__':
     # pos = {n: p - [min_time, 0] for n, p in pos.items()}
     # <== This block places the nodes according to time
 
-    if not ONLINE:
+    if not ONLINE: #CHANGE BACK
         # draw map
         png_filename = f"{MAP_NAME}.png"
         png_filepath = os.path.join(os.environ.get("DT_REPO_PATH"), "assets", "maps", png_filename)
         map_png = pimage.imread(png_filepath)
+        
         plt.imshow(
             map_png,
             origin='upper',
             extent=[0, MAP_WIDTH, 0, MAP_HEIGHT]
         )
-
-        for entity in ["world", "watchtower", "myrobot", "autobot", "tag/3"]:
+        #overlays the png of the map under the graph
+        
+        for entity in ["world", "watchtower", "myrobot", "autobot", "tag/3", DUCKIEBOT_NAME]:
             nx.draw_networkx_nodes(
                 G,
                 pos,
@@ -259,13 +308,18 @@ if __name__ == '__main__':
         edges = set()
         for edge in G.edges:
             edges.add((edge[0], edge[1]))
-        nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='ivory')
+        nx.draw_networkx_edges(G, pos, edgelist=edges, edge_color='lime')
+        #TODO: figure out why duckiebot shows up as an edge in the image (if you change edge color the spot
+        #representing the duckiebot changes to the same color)
 
         plt.xlim(0, MAP_WIDTH)
         plt.ylim(0, MAP_HEIGHT)
         plt.subplots_adjust(left=0, bottom=0, right=0.99, top=0.99)
 
         plt.show()
+
+        #because the computation is running on a headless device, cannot show image but have to save it instead
+        #to access the saved image run "scp duckie@TTIClargeloop.local:/data/temp.png ./" in terminal
 
     # ---
     # rospy.signal_shutdown("done")

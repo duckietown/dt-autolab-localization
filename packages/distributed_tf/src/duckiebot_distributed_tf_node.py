@@ -67,7 +67,7 @@ class DistributedTFNode(DTROS):
             queue_size=1
         )
         self._pose_last = None
-        self._reminder = DTReminder(frequency=10)
+        self._reminder = DTReminder(frequency=10) # TODO: [DTSW-3929] increase frequency to odometry frequency
 
     def on_shutdown(self):
         if hasattr(self, '_group') and self._group is not None:
@@ -97,7 +97,8 @@ class DistributedTFNode(DTROS):
                     ),
                     is_fixed=True,
                     is_static=False,
-                    transform=transform.transform
+                    transform=transform.transform,
+                    variance=0.0 # Variance is 0 as this is a rigid transform
                 )
                 # add TF to the list of TFs to publish
                 self._static_tfs_sem.acquire()
@@ -153,12 +154,7 @@ class DistributedTFNode(DTROS):
         q_now_to_last = tr.quaternion_multiply(q_world_to_last, q_now_to_world)
         world_to_last = np.matrix(tr.quaternion_matrix(q_world_to_last))
 
-        #now_to_last = np.matrix(tr.quaternion_matrix(q_now_to_last))
-        # print(now_to_last)
-        #now_to_last = now_to_last[0:3][:, 0:3]
         R_world_to_last = world_to_last[0:3][:, 0:3]
-        # print(now_to_last)
-        #t_now_to_last = np.array(np.dot(now_to_last, t_now_to_world - t_last_to_world))
         t_now_to_last = np.array(np.dot(R_world_to_last, t_now_to_world - t_last_to_world))
 
         t_now_to_last = t_now_to_last.flatten()
@@ -190,7 +186,9 @@ class DistributedTFNode(DTROS):
             ),
             is_fixed=False,
             is_static=False,
-            transform=transform
+            transform=transform,
+            # TODO: #7 add variance value to odometry
+            variance=0.0
         )
         # publish
         self._tf_pub.publish(tf, destination=self.map_name)

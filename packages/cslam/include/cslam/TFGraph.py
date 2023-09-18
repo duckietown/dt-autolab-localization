@@ -11,10 +11,11 @@ import numpy as np
 
 class TFGraph(OrderedMultiDiGraph):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, verbose : bool = False,  *args, **kwargs):
         super(TFGraph, self).__init__(*args, **kwargs)
         # create lock
         self._lock = Semaphore(1)
+        self.verbose = verbose
 
     def add_node(self, name, **attr):
         if "pose" in attr and not isinstance(attr["pose"], TF):
@@ -32,7 +33,7 @@ class TFGraph(OrderedMultiDiGraph):
             attr["optimized"] = False
         # ---
         with self._lock:
-            # print(f'Adding node "{name}" w/ {attr}')
+            #print(f'Adding node "{name}" w/ {attr}') #PRINT
             super(TFGraph, self).add_node(name, **attr)
 
     def add_measurement(self, origin: str, target: str, time: float, measurement: TF,
@@ -52,7 +53,6 @@ class TFGraph(OrderedMultiDiGraph):
             raise ValueError("Edge attribute `measurement` must be of type `TF`.")
         # ---
         with self._lock:
-            # print(f'Adding edge "({u}, {v})" w/ {attr}')
             super(TFGraph, self).add_edge(u, v, **attr)
 
     def add_nodes_from(self, nodes_for_adding, **attr):
@@ -117,10 +117,11 @@ class TFGraph(OrderedMultiDiGraph):
                     # get node pose and other attributes
                     pose = g2o.Isometry3d(g2o.Quaternion(ndata["pose"].Q('wxyz')), ndata["pose"].t) \
                         if "pose" in ndata else None
-                    if "pose" in ndata:
-                        print(f"ADDING POSE FOR: {nname}\t {ndata['pose'].t}")
-                    else:
-                        print(f"NO POSE FOR: {nname}")
+                    if self.verbose:
+                        if "pose" in ndata:
+                            print(f"ADDING POSE FOR: {nname}\t {ndata['pose'].t}")
+                        else:
+                            print(f"NO POSE FOR: {nname}")
                     fixed = ndata["fixed"] if "fixed" in ndata else False
                     # add vertex
                     optimizer.add_vertex(node_id, pose=pose, fixed=fixed)
@@ -133,7 +134,7 @@ class TFGraph(OrderedMultiDiGraph):
                     # get edge measurement and other attributes
                     measurement = edata["measurement"]
                     # add edge
-                    optimizer.add_edge([iu, iv], g2o.Isometry3d(measurement.T))
+                    optimizer.add_edge([iu, iv], g2o.Isometry3d(measurement.T), edata["information"])
 
         # optimize
         with T2Profiler.profile("g2o-optimize"):

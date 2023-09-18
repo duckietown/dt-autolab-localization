@@ -6,6 +6,7 @@ import re
 import yaml
 import rospy
 import rospkg
+import numpy as np
 
 from duckietown.dtros import DTROS, NodeType
 from dt_communication_utils import DTCommunicationGroup
@@ -64,6 +65,7 @@ class DistributedTFNode(DTROS):
             self._group.shutdown()
 
     def _cb_atag(self, msg):
+    
         for detection in msg.detections:
             if detection.tag_id not in self._tags:
                 continue
@@ -88,7 +90,8 @@ class DistributedTFNode(DTROS):
                 ),
                 is_fixed=False,
                 is_static=is_static,
-                transform=detection.transform
+                transform=detection.transform,
+                variance=detection.pose_error
             )
             # publish
             self._tf_pub.publish(tf, destination=self.map_name)
