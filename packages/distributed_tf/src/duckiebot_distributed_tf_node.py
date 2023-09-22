@@ -67,7 +67,7 @@ class DistributedTFNode(DTROS):
             queue_size=1
         )
         self._pose_last = None
-        self._reminder = DTReminder(frequency=10) # TODO: [DTSW-3929] increase frequency to odometry frequency
+        self._reminder = DTReminder(frequency=30)
 
     def on_shutdown(self):
         if hasattr(self, '_group') and self._group is not None:
