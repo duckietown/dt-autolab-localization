@@ -3,11 +3,17 @@
     <arg name="pkg_name" value="cslam"/>
     <arg name="node_name" default="single_experiment_node"/>
 
+    <!-- Define the online argument with default value of False -->
+    <arg name="online" default="false"/>
+
     <!-- Subscription -->
     <!--    none.   -->
 
     <!-- Publication -->
     <!--    none.   -->
 
-    <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" required="true" />
+    <!-- Pass the online argument to the node -->
+    <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" required="true">
+        <rosparam param="online" subst_value="True">$(arg online)</rosparam>
+    </node>
 </launch>
