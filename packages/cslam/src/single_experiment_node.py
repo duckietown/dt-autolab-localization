@@ -3,6 +3,7 @@ import os
 import time
 from collections import defaultdict
 from functools import partial
+from tkinter import ON
 from typing import List, Tuple
 from cslam.include.cslam import TFGraph
 
@@ -33,6 +34,8 @@ from cslam import OnlineLocalizationExperiment
 from cslam_app import manager, logger
 from dt_duckiematrix_protocols import Matrix
 
+import argparse
+
 # constants
 MAP_NAME = "TTIC_large_loop"
 DUCKIEBOT_NAME = "bwstod"
@@ -45,8 +48,8 @@ TILE_SIZE = 0.595
 MAP_WIDTH = TILE_SIZE * 4
 MAP_HEIGHT = TILE_SIZE * 5
 
-VERBOSE = True
-PROFILING = True
+VERBOSE = False
+PROFILING = False
 ROS_TF_PUBLISHER = False
 
 def marker(frame_type: str) -> str:
@@ -175,8 +178,8 @@ if __name__ == '__main__':
     manager.start("/autolab/tf", AutolabTransform)
 
     # create experiment
-    ONLINE = False
-
+    ONLINE = rospy.get_param('/single_experiment_node/online')
+    print(f'Online: {ONLINE}')
     if ONLINE:
         experiment = OnlineLocalizationExperiment(
             manager,
@@ -184,6 +187,7 @@ if __name__ == '__main__':
             precision_ms=PRECISION_MSECS,
             verbose=VERBOSE
         )
+        print('Online experiment')
         #experiment.on_post_optimize(partial(update_renderer, experiment))
     else:
         experiment = TimedLocalizationExperiment(
