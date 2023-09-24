@@ -146,7 +146,8 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
                         print(f"Sending GPS for duckiebot {duckiebot_name}")
                     # Retrieve the latest optimized duckiebot pose
                     unoptimized_global_TF = self._get_latest_global_odometry_TF(self._graph.nodes, duckiebot_name)
-
+                    if verbose:
+                        print(f'Latest GPS position for {duckiebot_name}: {unoptimized_global_TF["pose"].t}')
                     # Obtain time in the appropriat format for the gps_msg
                     header_time = rospy.Time.from_sec(time.time())
 
