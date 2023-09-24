@@ -10,7 +10,7 @@ import numpy as np
 from autolab_msgs.msg import AutolabReferenceFrame, AutolabTransform
 
 from cslam_app.utils.T2Profiler import T2Profiler
-from cslam.include.cslam.utils import TF_to_Transform
+from cslam.include.cslam.utils import TF, TF_to_Transform
 from .LocalizationExperiment import LocalizationExperiment
 from .experiments import \
     ExperimentsManagerAbs
@@ -209,7 +209,7 @@ class OnlineLocalizationExperiment(LocalizationExperiment):
                 self._on_post_optimize()
 
     @staticmethod
-    def _get_latest_global_odometry_TF(graph_nodes : Dict, robot_name):
+    def _get_latest_global_odometry_TF(graph_nodes : Dict, robot_name) -> TF:
         latest_optimized_pose = None
 
         for key, value in graph_nodes.items():
