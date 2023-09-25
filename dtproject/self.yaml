@@ -1,0 +1,8 @@
+name: "dt-autolab-localization"
+maintainer:
+    name: "Andrea F. Daniele"
+    email: "afdaniele@duckietown.com"
+description: "Localization system for the Duckietown Autolab"
+version: 0.0.1
+# pick an icon from: https://fontawesome.com/v4.7.0/icons/
+icon: map-marker
