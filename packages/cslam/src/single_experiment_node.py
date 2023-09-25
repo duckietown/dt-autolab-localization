@@ -289,7 +289,7 @@ if __name__ == '__main__':
     if not ONLINE: #CHANGE BACK
         # draw map
         png_filename = f"{MAP_NAME}.png"
-        png_filepath = os.path.join(os.environ.get("DT_REPO_PATH"), "assets", "maps", png_filename)
+        png_filepath = os.path.join(os.environ.get("DT_PROJECT_PATH"), "assets", "maps", png_filename)
         map_png = pimage.imread(png_filepath)
         
         plt.imshow(

@@ -89,8 +89,8 @@ COPY ./launchers/. "${PROJECT_LAUNCHERS_PATH}/"
 RUN dt-install-launchers "${PROJECT_LAUNCHERS_PATH}"
 
 # install scripts
-COPY ./assets/entrypoint.d "${REPO_PATH}/assets/entrypoint.d"
-COPY ./assets/environment.d "${REPO_PATH}/assets/environment.d"
+COPY ./assets/entrypoint.d "${PROJECT_PATH}/assets/entrypoint.d"
+COPY ./assets/environment.d "${PROJECT_PATH}/assets/environment.d"
 
 # define default command
 CMD ["bash", "-c", "dt-launcher-${DT_LAUNCHER}"]
@@ -126,6 +126,8 @@ RUN python3 -m pip uninstall -y dataclasses
 
 # copy the ApriltagsDB code
 # TODO: this is temporary, only used because the apriltag-postproc node is a mess
-COPY ./assets/apriltagsDB.yaml "${REPO_PATH}/assets/apriltagsDB.yaml"
-COPY ./assets/maps "${REPO_PATH}/assets/maps"
-COPY ./assets/toy_example.py /code/toy-example.py
+COPY ./assets/apriltagsDB.yaml "${PROJECT_PATH}/assets/apriltagsDB.yaml"
+
+# copy assets
+COPY ./assets/maps "${PROJECT_PATH}/assets/maps"
+COPY ./scripts/toy_example.py /code/toy-example.py
