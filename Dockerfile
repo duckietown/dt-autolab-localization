@@ -130,4 +130,4 @@ COPY ./assets/apriltagsDB.yaml "${PROJECT_PATH}/assets/apriltagsDB.yaml"
 
 # copy assets
 COPY ./assets/maps "${PROJECT_PATH}/assets/maps"
-COPY ./scripts/toy_example.py /code/toy-example.py
+COPY ./tests/toy_example.py /code/toy-example.py
